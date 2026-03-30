@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=Space+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-highest": "#33343b",
+                        "outline-variant": "#3b4a44",
+                        "on-tertiary-fixed-variant": "#444652",
+                        "surface-container-low": "#191b22",
+                        "secondary-fixed-dim": "#c4c5d6",
+                        "on-secondary-fixed": "#181b27",
+                        "outline": "#85948d",
+                        "on-primary-fixed-variant": "#00513f",
+                        "secondary-container": "#434654",
+                        "surface-container": "#1e1f26",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#434654",
+                        "surface-dim": "#111319",
+                        "surface-bright": "#373940",
+                        "error-container": "#93000a",
+                        "tertiary-fixed-dim": "#c4c6d3",
+                        "surface-container-high": "#282a30",
+                        "tertiary-container": "#b9bbc9",
+                        "on-secondary": "#2d303d",
+                        "inverse-on-surface": "#2e3037",
+                        "surface-tint": "#FF702E",
+                        "on-secondary-container": "#b2b4c5",
+                        "on-primary-fixed": "#002118",
+                        "surface-variant": "#33343b",
+                        "secondary": "#c4c5d6",
+                        "inverse-primary": "#006b55",
+                        "on-tertiary-fixed": "#181b25",
+                        "surface": "#111319",
+                        "primary-container": "#FF702E",
+                        "on-surface": "#e2e2eb",
+                        "inverse-surface": "#e2e2eb",
+                        "secondary-fixed": "#e0e1f3",
+                        "primary": "#FF702E",
+                        "on-background": "#e2e2eb",
+                        "surface-container-lowest": "#0c0e14",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#484b56",
+                        "on-primary-container": "#005643",
+                        "on-primary": "#00382b",
+                        "tertiary": "#d5d7e5",
+                        "primary-fixed-dim": "#FF702E",
+                        "background": "#111319",
+                        "primary-fixed": "#FF702E",
+                        "on-tertiary": "#2d303b",
+                        "on-surface-variant": "#bacac2",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#e0e2f0"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"],
+                        "mono": ["Space Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .terminal-glow {
+            text-shadow: 0 0 10px rgba(255, 112, 46, 0.4);
+        }
+        .error-glow {
+            box-shadow: 0 0 20px rgba(255, 77, 106, 0.15);
+        }
+        .btn-retry-hover:hover {
+            box-shadow: 0 0 15px rgba(255, 112, 46, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- SideNavBar Shell -->
+<aside class="flex flex-col h-screen fixed left-0 top-0 z-40 bg-[#0c0e14] dark:bg-[#111319] h-full w-64 0px-radius font-['Space_Grotesk_Monospace'] text-[11px] tracking-tight transition-all duration-300 ease-in-out">
+<!-- Brand Header -->
+<div class="p-6 mb-4">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 bg-surface-container-highest flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="biotech">biotech</span>
+</div>
+<div>
+<h2 class="font-black text-[#FF702E] text-sm tracking-widest">SOVEREIGN_ANALYST</h2>
+<p class="text-[9px] opacity-50 font-mono">v4.0.2_ACTIVE</p>
+</div>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-1 px-2 space-y-1">
+<a class="flex items-center gap-3 transition-colors duration-200 text-[#e2e2eb]/40 px-4 py-3 hover:bg-[#e2e2eb]/5 hover:text-[#e2e2eb]" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="dashboard">dashboard</span>
+<span class="font-medium tracking-widest">DASHBOARD</span>
+</a>
+<a class="flex items-center gap-3 transition-colors duration-200 bg-[#FF702E]/10 text-[#FF702E] border-l-2 border-[#FF702E] px-4 py-3" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="biotech">biotech</span>
+<span class="font-medium tracking-widest">RESEARCH</span>
+</a>
+<a class="flex items-center gap-3 transition-colors duration-200 text-[#e2e2eb]/40 px-4 py-3 hover:bg-[#e2e2eb]/5 hover:text-[#e2e2eb]" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="terminal">terminal</span>
+<span class="font-medium tracking-widest">LOGS</span>
+</a>
+<a class="flex items-center gap-3 transition-colors duration-200 text-[#e2e2eb]/40 px-4 py-3 hover:bg-[#e2e2eb]/5 hover:text-[#e2e2eb]" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="code">code</span>
+<span class="font-medium tracking-widest">TERMINAL</span>
+</a>
+</nav>
+<!-- CTA & Footer -->
+<div class="p-4 space-y-4">
+<button class="w-full py-3 bg-primary-container text-white font-bold tracking-tighter uppercase text-xs hover:brightness-110 transition-all">
+                NEW_QUERY
+            </button>
+<div class="pt-4 border-t border-outline-variant/20 space-y-1">
+<a class="flex items-center gap-3 text-[#e2e2eb]/40 px-4 py-2 hover:text-[#e2e2eb] transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
+<span class="tracking-widest uppercase">SUPPORT</span>
+</a>
+<a class="flex items-center gap-3 text-[#e2e2eb]/40 px-4 py-2 hover:text-[#e2e2eb] transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="description">description</span>
+<span class="tracking-widest uppercase">DOCS</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar Shell -->
+<header class="flex justify-between items-center w-full px-6 h-16 bg-[#111319] dark:bg-[#0c0e14] border-b-0 sticky top-0 z-30">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#FF702E] font-['Space_Grotesk']">RESEARCH_AI_TERMINAL</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-['Space_Grotesk'] uppercase tracking-widest text-xs text-[#e2e2eb]/60 hover:text-[#FF702E] transition-colors duration-200" href="#">ARCHIVE</a>
+<a class="font-['Space_Grotesk'] uppercase tracking-widest text-xs text-[#e2e2eb]/60 hover:text-[#FF702E] transition-colors duration-200" href="#">DATASETS</a>
+<a class="font-['Space_Grotesk'] uppercase tracking-widest text-xs text-[#e2e2eb]/60 hover:text-[#FF702E] transition-colors duration-200" href="#">MODELS</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="absolute inset-y-0 left-3 flex items-center text-outline-variant">
+<span class="material-symbols-outlined text-sm" data-icon="search">search</span>
+</span>
+<input class="bg-[#1b1e26] border-none text-[10px] font-mono tracking-widest pl-10 pr-4 py-1.5 focus:ring-1 focus:ring-primary w-48 text-on-surface" placeholder="QUERY_DB..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-[#e2e2eb]/60 hover:text-[#FF702E] transition-colors active:scale-95 duration-75">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-[#e2e2eb]/60 hover:text-[#FF702E] transition-colors active:scale-95 duration-75">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-8 bg-surface-container-highest border border-outline-variant overflow-hidden">
+<img alt="User Profile Avatar" class="h-full w-full object-cover" data-alt="close-up portrait of a professional man in a tech environment with subtle blue backlighting and clean composition" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzcLhmfHFN4-Y-SK2DknmbuEWTUEUAKXziQ91LuyTIUDK_RboL_HPICrLDUehGO30Mctygmaoku0oEVPUvbsLSiNcQTkXnMTgNW9_m9y75al8gfABDzg-eC6M3nU01ZCUbCfhnGTFrSJx3tka1cxiVB1BKHw_VUODHGAwhe7UPBBouNaTclE_eY04FX2TmRfUX3sjsr_yHsR6LkURHaQkTnjSTGsLVpFvuGLcjT4oTvhDyRCl1k6XK-_tIM60WFNxl0Of-4_Yeyigj"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Canvas Area -->
+<div class="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-surface-container-lowest">
+<!-- Abstract Grid Texture Background -->
+<div class="absolute inset-0 pointer-events-none opacity-[0.03]" style="background-image: radial-gradient(circle, #FF702E 1px, transparent 1px); background-size: 40px 40px;"></div>
+<!-- Error State Container -->
+<div class="max-w-xl w-full text-center z-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+<!-- Warning Visual -->
+<div class="relative inline-flex items-center justify-center">
+<div class="absolute inset-0 bg-[#FF4D6A]/10 blur-3xl rounded-full"></div>
+<div class="relative w-24 h-24 flex items-center justify-center border border-[#FF4D6A]/30 bg-[#0c0e14]">
+<svg fill="none" height="48" viewbox="0 0 24 24" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 5.99L19.53 19H4.47L12 5.99ZM12 2L1 21H23L12 2ZM13 16H11V18H13V16ZM13 10H11V14H13V10Z" fill="#FF4D6A"></path>
+</svg>
+<!-- Tech Accents -->
+<div class="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-[#FF4D6A]"></div>
+<div class="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-[#FF4D6A]"></div>
+</div>
+</div>
+<!-- Messaging -->
+<div class="space-y-4">
+<h1 class="text-4xl md:text-5xl font-['Space_Grotesk'] font-light tracking-tight text-on-surface">
+                        Something went <span class="text-[#FF4D6A] italic">wrong</span>
+</h1>
+<div class="flex items-center justify-center gap-3">
+<div class="h-[1px] w-12 bg-outline-variant"></div>
+<p class="font-mono text-[11px] tracking-widest text-on-surface-variant uppercase">The Research Agent encountered an error. Please try again.</p>
+<div class="h-[1px] w-12 bg-outline-variant"></div>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col items-center gap-6 pt-4">
+<button class="btn-retry-hover group relative px-10 py-4 transition-all duration-300 border border-[#FF702E] overflow-hidden bg-transparent">
+<div class="absolute inset-0 bg-[#FF702E]/0 group-hover:bg-[#FF702E]/5 transition-colors"></div>
+<span class="relative flex items-center gap-3 font-['Space_Mono'] text-sm font-bold tracking-[0.2em] text-[#FF702E]">
+<span class="material-symbols-outlined text-[18px]" data-icon="refresh">refresh</span>
+                            RETRY_OPERATION
+                        </span>
+</button>
+<div class="flex items-center gap-8 pt-8">
+<div class="flex flex-col items-start gap-1">
+<span class="text-[9px] font-mono text-outline-variant uppercase">Error Code</span>
+<span class="text-[11px] font-mono text-[#FF4D6A]">ERR_CORE_TIMEOUT_042</span>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant/30"></div>
+<div class="flex flex-col items-start gap-1">
+<span class="text-[9px] font-mono text-outline-variant uppercase">Subsystem</span>
+<span class="text-[11px] font-mono text-on-surface">NEURAL_LEXICON_V4</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Decorative System Data (Bottom Left) -->
+<div class="absolute bottom-8 left-8 hidden lg:block font-mono text-[9px] text-outline-variant/40 space-y-1">
+<div>SYSTEM_STABILITY: 84.2%</div>
+<div>UPTIME: 142:04:22:11</div>
+<div>MEMORY_DUMP: ATTACHED_LOGS_A1</div>
+</div>
+<!-- Decorative Coordinates (Top Right) -->
+<div class="absolute top-24 right-8 hidden lg:block font-mono text-[9px] text-outline-variant/40">
+                RES // ERR // 500_SYSTEM_FAILURE
+            </div>
+</div>
+<!-- AI Pulse Indicator -->
+<div class="h-[1px] w-full bg-surface-container">
+<div class="h-full bg-error w-1/3 animate-pulse"></div>
+</div>
+</main>
+</body></html>

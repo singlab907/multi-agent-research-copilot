@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+backend/__pycache__/
+backend/data/
+
+# Environment variables (NEVER push API keys)
+.env
+backend/.env
+
+# Build output
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+*.swp
+*.swo
+
+# Stitch exports (optional — large image files)
+# stitch-exports/**/*.png

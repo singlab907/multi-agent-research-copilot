@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Research Copilot | Agent Pipeline</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Space+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-on-surface": "#2e3037",
+                        "on-secondary-fixed": "#181b27",
+                        "surface-container-high": "#282a30",
+                        "primary-fixed": "#ffbf9e",
+                        "on-tertiary": "#2d303b",
+                        "on-tertiary-container": "#484b56",
+                        "on-primary-fixed-variant": "#691d00",
+                        "on-error": "#690005",
+                        "inverse-surface": "#e2e2eb",
+                        "tertiary-container": "#b9bbc9",
+                        "tertiary-fixed": "#e0e2f0",
+                        "inverse-primary": "#8e3700",
+                        "on-secondary": "#2d303d",
+                        "primary": "#FF702E",
+                        "primary-fixed-dim": "#ffb690",
+                        "on-secondary-container": "#b2b4c5",
+                        "on-primary-container": "#4b1200",
+                        "secondary-fixed": "#e0e1f3",
+                        "surface-tint": "#FF702E",
+                        "surface-bright": "#373940",
+                        "surface": "#111319",
+                        "secondary": "#c4c5d6",
+                        "on-primary-fixed": "#2b0600",
+                        "surface-dim": "#111319",
+                        "on-background": "#e2e2eb",
+                        "on-surface": "#e2e2eb",
+                        "secondary-container": "#434654",
+                        "on-secondary-fixed-variant": "#434654",
+                        "surface-container-lowest": "#0c0e14",
+                        "surface-container-highest": "#33343b",
+                        "outline": "#948a85",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1e1f26",
+                        "on-primary": "#4b1200",
+                        "on-error-container": "#ffdad6",
+                        "background": "#111319",
+                        "on-tertiary-fixed-variant": "#444652",
+                        "outline-variant": "#4a403b",
+                        "secondary-fixed-dim": "#c4c5d6",
+                        "on-tertiary-fixed": "#181b25",
+                        "tertiary-fixed-dim": "#c4c6d3",
+                        "tertiary": "#d5d7e5",
+                        "surface-container-low": "#191b22",
+                        "primary-container": "#FF702E",
+                        "on-surface-variant": "#cabfb9",
+                        "error-container": "#93000a",
+                        "surface-variant": "#33343b"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"],
+                        "mono": ["Space Mono", "monospace"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .pipeline-connector {
+            height: 2px;
+            flex-grow: 1;
+            margin: 0 1rem;
+        }
+        .glow-primary {
+            box-shadow: 0 0 15px rgba(255, 112, 46, 0.2);
+        }
+        .running-pulse {
+            animation: pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(255, 112, 46, 0.3); box-shadow: 0 0 5px rgba(255, 112, 46, 0.1); }
+            50% { border-color: rgba(255, 112, 46, 1); box-shadow: 0 0 15px rgba(255, 112, 46, 0.4); }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/30 selection:text-primary min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="bg-[#111319] dark:bg-[#111319] border-b border-[#ffffff]/5 flex justify-between items-center w-full px-6 h-14 font-['Space_Grotesk'] tracking-tight sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold text-[#e2e2eb] uppercase tracking-widest">Research Copilot</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-[#e2e2eb]/60 font-medium hover:text-primary transition-colors duration-200" href="#">Models</a>
+<a class="text-[#e2e2eb]/60 font-medium hover:text-primary transition-colors duration-200" href="#">Datasets</a>
+<a class="text-[#e2e2eb]/60 font-medium hover:text-primary transition-colors duration-200" href="#">Library</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-primary font-mono text-xs px-2 py-1 bg-primary/10 rounded">v1.0</span>
+<span class="material-symbols-outlined text-[#e2e2eb]/60 cursor-pointer hover:text-primary">terminal</span>
+<span class="material-symbols-outlined text-[#e2e2eb]/60 cursor-pointer hover:text-primary">settings</span>
+</div>
+</nav>
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-full w-64 bg-[#0c0e14] dark:bg-[#0c0e14] border-r border-[#ffffff]/5 font-['Space_Grotesk_Monospace'] text-xs uppercase">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 bg-surface-container flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary">analytics</span>
+</div>
+<div>
+<div class="text-primary font-black">Analyst_01</div>
+<div class="text-[#e2e2eb]/40 text-[10px]">Active Session</div>
+</div>
+</div>
+<div class="mt-4 flex flex-col flex-1">
+<a class="bg-[#111319] text-primary border-l-2 border-primary px-4 py-3 flex items-center gap-3 transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-sm">dashboard</span> Workspace
+                </a>
+<a class="text-[#e2e2eb]/40 px-4 py-3 flex items-center gap-3 hover:bg-[#111319] hover:text-[#e2e2eb] transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-sm">bar_chart</span> Analytics
+                </a>
+<a class="text-[#e2e2eb]/40 px-4 py-3 flex items-center gap-3 hover:bg-[#111319] hover:text-[#e2e2eb] transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-sm">inventory_2</span> Archive
+                </a>
+<a class="text-[#e2e2eb]/40 px-4 py-3 flex items-center gap-3 hover:bg-[#111319] hover:text-[#e2e2eb] transition-all duration-150" href="#">
+<span class="material-symbols-outlined text-sm">memory</span> System
+                </a>
+</div>
+<div class="p-4">
+<button class="w-full bg-primary-container text-on-primary-container font-bold py-3 uppercase tracking-tighter hover:opacity-90 transition-opacity">
+                    New Research
+                </button>
+</div>
+<div class="mt-auto border-t border-[#ffffff]/5">
+<a class="text-[#e2e2eb]/40 px-4 py-3 flex items-center gap-3 hover:text-[#e2e2eb]" href="#">
+<span class="material-symbols-outlined text-sm">description</span> Documentation
+                </a>
+<a class="text-[#e2e2eb]/40 px-4 py-3 flex items-center gap-3 hover:text-[#e2e2eb]" href="#">
+<span class="material-symbols-outlined text-sm">help_outline</span> Support
+                </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto bg-surface-dim p-8">
+<div class="max-w-6xl mx-auto space-y-12">
+<!-- Section Header -->
+<header class="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+<div>
+<div class="text-primary font-mono text-sm mb-1 tracking-widest uppercase">Process flow // 001</div>
+<h1 class="text-3xl font-headline font-bold text-on-surface tracking-tight">Agent Pipeline Status</h1>
+</div>
+<div class="text-on-surface-variant font-mono text-xs text-right">
+                        SYS_LOAD: 24%<br/>
+                        ACTIVE_AGENTS: 03
+                    </div>
+</header>
+<!-- Pipeline Status Bar Container -->
+<section class="bg-[#0F1117] p-10 border border-outline-variant/20 relative overflow-hidden">
+<!-- Subtle background grid texture -->
+<div class="absolute inset-0 opacity-5 pointer-events-none" style="background-image: radial-gradient(#FF702E 0.5px, transparent 0.5px); background-size: 20px 20px;"></div>
+<div class="relative z-10 flex items-center justify-between gap-2">
+<!-- Agent 1: Planner (COMPLETED) -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-full max-w-[200px] bg-[#1A1D27] border border-primary p-4 transition-all duration-300 group">
+<div class="flex justify-between items-start mb-3">
+<div class="w-10 h-10 bg-primary/10 flex items-center justify-center border border-primary/30">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<span class="material-symbols-outlined text-primary text-sm">check_circle</span>
+</div>
+<div class="font-headline font-bold text-on-surface uppercase tracking-wider mb-1">Planner</div>
+<div class="font-mono text-[10px] text-primary flex justify-between">
+<span>Done</span>
+<span>0.8s</span>
+</div>
+</div>
+</div>
+<!-- Connector 1 (Active/Completed) -->
+<div class="pipeline-connector bg-primary/40 relative">
+<div class="absolute inset-0 bg-primary animate-pulse opacity-60"></div>
+<div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2">
+<span class="material-symbols-outlined text-primary text-xs" style="font-variation-settings: 'wght' 700;">chevron_right</span>
+</div>
+</div>
+<!-- Agent 2: Research (COMPLETED) -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-full max-w-[200px] bg-[#1A1D27] border border-primary p-4 transition-all duration-300">
+<div class="flex justify-between items-start mb-3">
+<div class="w-10 h-10 bg-primary/10 flex items-center justify-center border border-primary/30">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">search</span>
+</div>
+<span class="material-symbols-outlined text-primary text-sm">check_circle</span>
+</div>
+<div class="font-headline font-bold text-on-surface uppercase tracking-wider mb-1">Research</div>
+<div class="font-mono text-[10px] text-primary flex justify-between">
+<span>Done</span>
+<span>4.2s</span>
+</div>
+</div>
+</div>
+<!-- Connector 2 (Active/Transitioning) -->
+<div class="pipeline-connector bg-primary/40 relative">
+<div class="absolute inset-0 bg-gradient-to-r from-primary to-primary/20"></div>
+<div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2">
+<span class="material-symbols-outlined text-primary text-xs" style="font-variation-settings: 'wght' 700;">chevron_right</span>
+</div>
+</div>
+<!-- Agent 3: Writer (RUNNING) -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-full max-w-[200px] bg-[#1A1D27] border-2 border-primary running-pulse p-4 transition-all duration-300">
+<div class="flex justify-between items-start mb-3">
+<div class="w-10 h-10 bg-primary/20 flex items-center justify-center border border-primary">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+</div>
+<div class="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+</div>
+<div class="font-headline font-bold text-on-surface uppercase tracking-wider mb-1">Writer</div>
+<div class="font-mono text-[10px] text-primary flex justify-between">
+<span class="animate-pulse">Processing...</span>
+<span>--</span>
+</div>
+</div>
+</div>
+<!-- Connector 3 (Idle) -->
+<div class="pipeline-connector bg-outline-variant/30 relative">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2">
+<span class="material-symbols-outlined text-outline-variant/40 text-xs">chevron_right</span>
+</div>
+</div>
+<!-- Agent 4: Evaluator (IDLE) -->
+<div class="flex flex-col items-center flex-1">
+<div class="w-full max-w-[200px] bg-[#1A1D27] border border-outline-variant/30 p-4 transition-all duration-300 opacity-60">
+<div class="flex justify-between items-start mb-3">
+<div class="w-10 h-10 bg-surface-container flex items-center justify-center border border-outline-variant/20">
+<span class="material-symbols-outlined text-on-surface-variant">verified_user</span>
+</div>
+</div>
+<div class="font-headline font-bold text-on-surface-variant uppercase tracking-wider mb-1">Evaluator</div>
+<div class="font-mono text-[10px] text-on-surface-variant flex justify-between">
+<span>Waiting</span>
+<span>--</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Data Display Bento -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Metrics Card -->
+<div class="md:col-span-2 bg-surface-container-low p-6 border border-outline-variant/10">
+<h3 class="font-headline font-bold text-on-surface-variant text-xs uppercase tracking-widest mb-6">Real-time Stream</h3>
+<div class="space-y-4 font-mono text-xs h-48 overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-outline-variant">
+<div class="flex gap-4">
+<span class="text-primary">[14:20:01]</span>
+<span class="text-on-surface/80">SYS: Handshake established with Writer agent cluster.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-primary">[14:20:05]</span>
+<span class="text-on-surface/80">WRITER: Initializing draft context from Research outputs.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-primary">[14:20:12]</span>
+<span class="text-on-surface/80">WRITER: Drafting Section 1 (Executive Summary)...</span>
+</div>
+<div class="flex gap-4">
+<span class="text-primary">[14:20:18]</span>
+<span class="text-on-surface/80">WRITER: Fetching semantic links for terminology verification.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-primary">[14:20:25]</span>
+<span class="text-on-surface/80 animate-pulse">WRITER: Synthesizing analytical conclusions...</span>
+</div>
+</div>
+</div>
+<!-- Performance Card -->
+<div class="bg-surface-container-high p-6 flex flex-col justify-between">
+<div>
+<h3 class="font-headline font-bold text-on-surface-variant text-xs uppercase tracking-widest mb-6">Efficiency Matrix</h3>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between text-[10px] font-mono text-on-surface-variant mb-1">
+<span>TOTAL PROGRESS</span>
+<span>62%</span>
+</div>
+<div class="h-1 bg-surface w-full">
+<div class="h-full bg-primary" style="width: 62%;"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-mono text-on-surface-variant mb-1">
+<span>LATENCY (AVG)</span>
+<span>240ms</span>
+</div>
+<div class="h-1 bg-surface w-full">
+<div class="h-full bg-primary-container" style="width: 35%;"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-8">
+<img alt="Close-up of futuristic hardware circuitry with glowing orange neon data tracks and microchips in dark high-tech room" class="w-full h-24 object-cover grayscale opacity-50 contrast-125 border border-outline-variant/30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJD2cdK8nuIp4zO8a31gdhokL3fozU0PZMxTIH6EiDcoyOU-eD05TGamn6ha3geHLg52iA7MSjTYK3eDw6XWkeaZ4Td5hi-pIeI9G38h94udDY6o5IhNoV2TKsKWFQIfLjl2rqIlH7I5zquEmJvDRMiw3TwRh_tsonISH4_YLdhxVsD10t85i_q9t4j4DKvwhK8Zz4WQsQR-nHarCVOudp6X75USQlYBBUIEjkyhSf4dWnsueAruQA0mFZzMZbItSIKjqwAPPeZBkB"/>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Navigation Shell -->
+<div class="md:hidden fixed bottom-0 left-0 right-0 bg-surface-container-highest flex justify-around items-center h-16 z-50">
+<div class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-mono">WORKSPACE</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="text-[10px] font-mono">DATA</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">memory</span>
+<span class="text-[10px] font-mono">SYSTEM</span>
+</div>
+</div>
+</body></html>

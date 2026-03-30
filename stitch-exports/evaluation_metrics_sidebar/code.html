@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>METRIC_TERMINAL_V1.0 | Evaluation Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-primary": "#210b00",
+            "primary-container": "#FF702E",
+            "outline-variant": "#3b4a44",
+            "on-primary-fixed": "#331200",
+            "tertiary-fixed": "#e0e2f0",
+            "inverse-on-surface": "#2e3037",
+            "primary": "#FF702E",
+            "on-secondary-fixed-variant": "#434654",
+            "error-container": "#93000a",
+            "error": "#ffb4ab",
+            "surface": "#111319",
+            "surface-container-highest": "#33343b",
+            "on-primary-fixed-variant": "#6d2d00",
+            "surface-container-high": "#282a30",
+            "on-tertiary-fixed-variant": "#444652",
+            "surface-container": "#1e1f26",
+            "outline": "#85948d",
+            "inverse-primary": "#954400",
+            "on-tertiary-fixed": "#181b25",
+            "secondary-container": "#434654",
+            "surface-bright": "#373940",
+            "tertiary-container": "#b9bbc9",
+            "surface-container-lowest": "#0c0e14",
+            "on-background": "#e2e2eb",
+            "on-secondary-fixed": "#181b27",
+            "surface-dim": "#111319",
+            "on-tertiary-container": "#484b56",
+            "inverse-surface": "#e2e2eb",
+            "primary-fixed": "#ffdbc9",
+            "surface-variant": "#33343b",
+            "tertiary": "#d5d7e5",
+            "primary-fixed-dim": "#ffb690",
+            "on-error": "#690005",
+            "on-secondary-container": "#b2b4c5",
+            "on-error-container": "#ffdad6",
+            "surface-container-low": "#191b22",
+            "secondary-fixed-dim": "#c4c5d6",
+            "secondary-fixed": "#e0e1f3",
+            "on-surface-variant": "#bacac2",
+            "on-secondary": "#2d303d",
+            "secondary": "#c4c5d6",
+            "on-surface": "#e2e2eb",
+            "background": "#111319",
+            "on-primary-container": "#4b1c00",
+            "on-tertiary": "#2d303b",
+            "tertiary-fixed-dim": "#c4c6d3",
+            "surface-tint": "#FF702E"
+          },
+          fontFamily: {
+            "headline": ["Space Grotesk"],
+            "body": ["Inter"],
+            "label": ["Space Grotesk"]
+          },
+          borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0c0e14;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3b4a44;
+    }
+    .glow-primary {
+      box-shadow: 0 0 20px rgba(255, 112, 46, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary">
+<!-- Top Navigation Shell -->
+<nav class="fixed top-0 w-full z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5 flex justify-between items-center h-16 px-6">
+<div class="flex items-center gap-8">
+<span class="text-[#FF702E] font-black tracking-tighter text-xl font-headline">METRIC_TERMINAL_V1.0</span>
+<div class="hidden md:flex gap-6">
+<a class="font-headline font-bold text-sm tracking-tight text-[#FF702E] border-b-2 border-[#FF702E] pb-1" href="#">DASHBOARD</a>
+<a class="font-headline font-bold text-sm tracking-tight text-slate-400 hover:text-white pb-1 transition-colors" href="#">EVAL_LOGS</a>
+<a class="font-headline font-bold text-sm tracking-tight text-slate-400 hover:text-white pb-1 transition-colors" href="#">MODEL_DIFF</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<input class="bg-surface-container-lowest border-none border-b border-outline-variant focus:border-primary focus:ring-0 text-xs font-label uppercase tracking-widest w-48 transition-all" placeholder="SEARCH_SYSTEM..." type="text"/>
+</div>
+<button class="text-slate-400 hover:text-[#FF702E] transition-colors">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="text-slate-400 hover:text-[#FF702E] transition-colors">
+<span class="material-symbols-outlined">account_tree</span>
+</button>
+<div class="h-8 w-8 bg-surface-container-highest border border-outline-variant flex items-center justify-center">
+<img alt="Analyst Avatar" class="w-full h-full object-cover" data-alt="minimalist user avatar icon with a dark geometric tech aesthetic background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPCpMGTnLf-kGxMr2Ez3sC-W46yyrbj8zmERCEyomhE_RMmPMykI_vqkcNxfAfNoW-ZRn-J3fCBpTjaCNspsG9iE9Bw3cO6YzRhtV8LMODt3RUEJdPgfQEM10qBvHD5O-pUaNsAU9jZFLPZ6rn7UXrbKl8omcbLh4BNY1leA7udWkLPyZ7zMwpzdvuZANp5CJsb9EAOd5BqnofeAQcmmayMtaga40DbuaxeR5bOOspAv-aZePky-HVxXpy_1gQY96fNku1yTzzNyi9"/>
+</div>
+</div>
+</nav>
+<!-- Side Navigation Rail -->
+<aside class="fixed left-0 top-0 h-screen flex flex-col z-40 bg-slate-950 text-[#FF702E] font-['Space_Grotesk'] uppercase tracking-widest text-xs md:text-sm docked left-0 h-full w-64 border-r-0 shadow-[0_0_20px_rgba(255,112,46,0.05)] pt-20">
+<div class="px-6 py-4 mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container/20 flex items-center justify-center border border-primary/30">
+<span class="material-symbols-outlined text-primary">analytics</span>
+</div>
+<div>
+<h2 class="text-[#FF702E] font-black tracking-tighter block">SOVEREIGN_ANALYST</h2>
+<span class="text-slate-500 text-[10px]">ID: 042_COORDINATE</span>
+</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col">
+<a class="text-[#FF702E] bg-slate-900 border-l-4 border-[#FF702E] px-4 py-3 flex items-center gap-3 transition-all" href="#">
+<span class="material-symbols-outlined">verified</span>
+<span>Accuracy</span>
+</a>
+<a class="text-slate-500 hover:text-slate-300 px-4 py-3 flex items-center gap-3 transition-all hover:bg-slate-900/80" href="#">
+<span class="material-symbols-outlined">rule_folder</span>
+<span>Completeness</span>
+</a>
+<a class="text-slate-500 hover:text-slate-300 px-4 py-3 flex items-center gap-3 transition-all hover:bg-slate-900/80" href="#">
+<span class="material-symbols-outlined">auto_stories</span>
+<span>Clarity</span>
+</a>
+<a class="text-slate-500 hover:text-slate-300 px-4 py-3 flex items-center gap-3 transition-all hover:bg-slate-900/80" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span>Hallucinations</span>
+</a>
+<div class="mt-auto border-t border-white/5 pt-4 pb-6">
+<a class="text-slate-500 hover:text-slate-300 px-4 py-3 flex items-center gap-3 transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+<a class="text-slate-500 hover:text-slate-300 px-4 py-3 flex items-center gap-3 transition-all" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span>System_Logs</span>
+</a>
+<div class="px-4 mt-6">
+<button class="w-full bg-primary-container text-on-primary py-3 font-bold text-xs tracking-[0.2em] hover:brightness-110 active:scale-95 transition-all">
+            RUN_EVALUATION
+          </button>
+</div>
+</div>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 px-8 grid grid-cols-1 xl:grid-cols-12 gap-8 pb-12">
+<!-- Left Workspace (Content Area) -->
+<div class="xl:col-span-8 space-y-6">
+<div class="bg-surface-container p-1 border-l-2 border-primary/50">
+<div class="bg-surface-container-low p-6">
+<div class="flex items-center justify-between mb-8">
+<h1 class="font-headline font-bold text-2xl tracking-tight text-on-surface">MODEL_OUTPUT_0982</h1>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-surface-container-highest text-[10px] font-label text-outline uppercase tracking-widest border border-outline-variant">v4.2-stable</span>
+<span class="px-2 py-1 bg-primary/10 text-[10px] font-label text-primary uppercase tracking-widest border border-primary/20">Analyzed</span>
+</div>
+</div>
+<div class="space-y-4 font-body leading-relaxed text-on-surface/80">
+<p class="text-sm border-l border-outline-variant pl-4 py-1 italic text-outline">Prompt: "Summarize the architectural differences between RISC and CISC in the context of modern edge computing."</p>
+<div class="p-6 bg-surface-container-lowest text-on-surface text-sm border border-outline-variant/10">
+              The primary distinction between RISC (Reduced Instruction Set Computer) and CISC (Complex Instruction Set Computer) architectures has evolved significantly. In modern edge computing, RISC-based designs like ARM and RISC-V dominate due to their energy efficiency and predictable power consumption per clock cycle. CISC, primarily x86-64, maintains dominance in high-performance edge servers where raw computational throughput and legacy software compatibility are prioritized over strict thermal envelopes...
+            </div>
+</div>
+</div>
+</div>
+<!-- Analysis Grid (Secondary Info) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container p-6 border-b border-primary/20">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-sm">memory</span>
+<span class="font-label text-xs uppercase tracking-widest text-outline">Token Usage</span>
+</div>
+<div class="text-2xl font-headline font-bold">1,402 <span class="text-xs text-outline font-normal">/ 4,096</span></div>
+</div>
+<div class="bg-surface-container p-6 border-b border-primary/20">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-sm">speed</span>
+<span class="font-label text-xs uppercase tracking-widest text-outline">Latency</span>
+</div>
+<div class="text-2xl font-headline font-bold">284 <span class="text-xs text-outline font-normal">ms</span></div>
+</div>
+</div>
+</div>
+<!-- Right Evaluation Sidebar (THE TASK) -->
+<aside class="xl:col-span-4 bg-[#1A1D27] border-l border-[#2A2D3A] p-6 h-[calc(100vh-120px)] sticky top-24 custom-scrollbar overflow-y-auto">
+<div class="flex items-center justify-between mb-8 border-b border-outline-variant/20 pb-4">
+<h3 class="font-headline font-bold text-lg tracking-tight uppercase">Metric_Analysis</h3>
+<span class="material-symbols-outlined text-outline">assessment</span>
+</div>
+<!-- 1. Score Cards -->
+<div class="space-y-6 mb-10">
+<!-- Accuracy -->
+<div class="group">
+<div class="flex justify-between items-end mb-2">
+<span class="font-label text-xs uppercase tracking-[0.15em] text-outline">Accuracy</span>
+<span class="font-headline font-bold text-xl text-primary">4.2<span class="text-xs text-outline/50">/5</span></span>
+</div>
+<div class="h-1 w-full bg-surface-container-highest">
+<div class="h-full bg-[#FF702E] shadow-[0_0_8px_rgba(255,112,46,0.5)]" style="width: 84%;"></div>
+</div>
+</div>
+<!-- Completeness -->
+<div class="group">
+<div class="flex justify-between items-end mb-2">
+<span class="font-label text-xs uppercase tracking-[0.15em] text-outline">Completeness</span>
+<span class="font-headline font-bold text-xl text-primary">4.5<span class="text-xs text-outline/50">/5</span></span>
+</div>
+<div class="h-1 w-full bg-surface-container-highest">
+<div class="h-full bg-[#FF702E] shadow-[0_0_8px_rgba(255,112,46,0.5)]" style="width: 90%;"></div>
+</div>
+</div>
+<!-- Clarity -->
+<div class="group">
+<div class="flex justify-between items-end mb-2">
+<span class="font-label text-xs uppercase tracking-[0.15em] text-outline">Clarity</span>
+<span class="font-headline font-bold text-xl text-primary">4.6<span class="text-xs text-outline/50">/5</span></span>
+</div>
+<div class="h-1 w-full bg-surface-container-highest">
+<div class="h-full bg-[#FF702E] shadow-[0_0_8px_rgba(255,112,46,0.5)]" style="width: 92%;"></div>
+</div>
+</div>
+</div>
+<!-- 2. Hallucination Risk Badge -->
+<div class="mb-10 p-4 bg-surface-container-lowest border border-outline-variant/10 flex items-center justify-between">
+<div>
+<span class="font-label text-[10px] uppercase tracking-widest text-outline block mb-1">Hallucination Risk</span>
+<span class="font-headline font-bold text-primary tracking-widest">LOW_LEVEL</span>
+</div>
+<div class="px-3 py-1 bg-primary/10 border border-primary/30 text-primary font-label text-[10px] uppercase tracking-tighter glow-primary">
+          Verified
+        </div>
+</div>
+<!-- 3. Confidence Score Gauge -->
+<div class="mb-10 flex flex-col items-center py-6 bg-surface-container-high/30">
+<span class="font-label text-[10px] uppercase tracking-widest text-outline mb-6 text-center w-full">Confidence Score</span>
+<div class="relative flex items-center justify-center">
+<svg class="w-32 h-32 transform -rotate-90">
+<circle class="text-surface-container-highest" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-primary transition-all duration-1000" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-dasharray="364.4" stroke-dashoffset="54.66" stroke-width="8"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-headline font-bold text-3xl text-on-surface">85%</span>
+<span class="text-[8px] font-label text-outline uppercase">Threshold +12%</span>
+</div>
+</div>
+</div>
+<!-- 4. Score Reasoning (Collapsible Section) -->
+<div class="border-t border-outline-variant/20 pt-6">
+<details class="group" open="">
+<summary class="flex items-center justify-between cursor-pointer list-none">
+<span class="font-label text-xs uppercase tracking-[0.2em] text-on-surface">Evaluation Notes</span>
+<span class="material-symbols-outlined text-primary group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="mt-4 space-y-4">
+<div class="p-3 bg-surface-container-lowest/50 border-l-2 border-primary/30">
+<span class="font-label text-[10px] text-primary uppercase block mb-1">ACC_NOTE_01</span>
+<p class="text-xs text-outline leading-relaxed font-body">Factual accuracy verified against Vector DB source #12. Small discrepancy noted in RISC-V clock cycle prediction (delta: 0.04).</p>
+</div>
+<div class="p-3 bg-surface-container-lowest/50 border-l-2 border-primary/30">
+<span class="font-label text-[10px] text-primary uppercase block mb-1">CLR_NOTE_05</span>
+<p class="text-xs text-outline leading-relaxed font-body">Syntactic complexity remains low. Subject-predicate alignment is optimal for technical documentation ingestion.</p>
+</div>
+</div>
+</details>
+</div>
+<!-- Floating Footer Action -->
+<div class="mt-12">
+<button class="w-full py-4 border border-outline-variant hover:bg-primary-container hover:text-on-primary transition-all font-label text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-2 group">
+          EXPORT_TELEMETRY
+          <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">database_upload</span>
+</button>
+</div>
+</aside>
+</main>
+<!-- Mobile Navigation Bar -->
+<div class="md:hidden fixed bottom-0 w-full bg-slate-950/90 backdrop-blur-xl border-t border-white/5 flex justify-around py-3 px-4 z-50">
+<button class="flex flex-col items-center gap-1 text-[#FF702E]">
+<span class="material-symbols-outlined">verified</span>
+<span class="text-[8px] font-label uppercase">Accuracy</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">rule_folder</span>
+<span class="text-[8px] font-label uppercase">Complete</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">auto_stories</span>
+<span class="text-[8px] font-label uppercase">Clarity</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-500">
+<span class="material-symbols-outlined">warning</span>
+<span class="text-[8px] font-label uppercase">Risk</span>
+</button>
+</div>
+</body></html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Research Copilot | Terminal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=Space+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary-container": "#FF702E",
+              "secondary-container": "#434654",
+              "on-secondary": "#2d303d",
+              "on-tertiary-fixed-variant": "#444652",
+              "surface-container-lowest": "#0c0e14",
+              "inverse-on-surface": "#2e3037",
+              "on-surface": "#e2e2eb",
+              "outline": "#948d85",
+              "surface-container-highest": "#33343b",
+              "primary": "#FF702E",
+              "surface-variant": "#33343b",
+              "on-error": "#690005",
+              "tertiary-fixed": "#e0e2f0",
+              "tertiary": "#d5d7e5",
+              "on-tertiary-fixed": "#181b25",
+              "tertiary-fixed-dim": "#c4c6d3",
+              "surface-dim": "#111319",
+              "surface-tint": "#FF702E",
+              "secondary": "#c4c5d6",
+              "on-secondary-fixed": "#181b27",
+              "on-background": "#e2e2eb",
+              "on-tertiary": "#2d303b",
+              "surface-container-low": "#191b22",
+              "on-error-container": "#ffdad6",
+              "on-secondary-fixed-variant": "#434654",
+              "error": "#ffb4ab",
+              "surface-bright": "#373940",
+              "on-primary-container": "#562100",
+              "primary-fixed": "#ffdfd1",
+              "inverse-surface": "#e2e2eb",
+              "tertiary-container": "#b9bbc9",
+              "on-primary-fixed": "#210b00",
+              "on-primary-fixed-variant": "#512000",
+              "surface": "#111319",
+              "background": "#111319",
+              "surface-container-high": "#282a30",
+              "on-surface-variant": "#cababa",
+              "surface-container": "#1e1f26",
+              "secondary-fixed-dim": "#c4c5d6",
+              "on-secondary-container": "#b2b4c5",
+              "outline-variant": "#4a3e3b",
+              "primary-fixed-dim": "#FF702E",
+              "secondary-fixed": "#e0e1f3",
+              "error-container": "#93000a",
+              "inverse-primary": "#6b2c00",
+              "on-primary": "#381700",
+              "on-tertiary-container": "#484b56"
+            },
+            fontFamily: {
+              "headline": ["Space Grotesk"],
+              "body": ["Inter"],
+              "label": ["Space Grotesk"],
+              "mono": ["Space Mono"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .terminal-glow:focus-within {
+            box-shadow: 0 0 20px rgba(255, 112, 46, 0.15);
+        }
+        .bg-grid-subtle {
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body selection:bg-primary/30 min-h-screen">
+<!-- TopNavBar Implementation -->
+<header class="bg-[#111319] border-b border-[#ffffff]/5 font-['Space_Grotesk'] tracking-tight flex justify-between items-center w-full px-6 h-14 sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 flex items-center justify-center text-[#FF702E]">
+<svg class="w-full h-full" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="3"></circle>
+<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z"></path>
+<path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"></path>
+<circle cx="12" cy="12" r="1"></circle>
+</svg>
+</div>
+<span class="text-lg font-bold text-[#e2e2eb] uppercase tracking-widest">Research Copilot</span>
+</div>
+<nav class="hidden md:flex items-center gap-6 ml-8">
+<a class="text-[#FF702E] font-bold border-b-2 border-[#FF702E] pb-1 text-sm uppercase tracking-wider" href="#">Workspace</a>
+<a class="text-[#e2e2eb]/60 font-medium hover:text-[#FF702E] transition-colors duration-200 text-sm uppercase tracking-wider" href="#">Models</a>
+<a class="text-[#e2e2eb]/60 font-medium hover:text-[#FF702E] transition-colors duration-200 text-sm uppercase tracking-wider" href="#">Datasets</a>
+<a class="text-[#e2e2eb]/60 font-medium hover:text-[#FF702E] transition-colors duration-200 text-sm uppercase tracking-wider" href="#">Library</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3 mr-4">
+<button class="text-[#e2e2eb]/60 hover:text-[#FF702E] transition-colors">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</button>
+<button class="text-[#e2e2eb]/60 hover:text-[#FF702E] transition-colors">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+<span class="px-2 py-0.5 bg-surface-container-high border border-outline-variant/30 text-[10px] font-mono text-[#FF702E] uppercase tracking-tighter">v1.0</span>
+</div>
+</header>
+<main class="relative flex flex-col items-center justify-center pt-24 pb-12 px-6 overflow-hidden">
+<!-- Background aesthetic elements -->
+<div class="absolute inset-0 bg-grid-subtle pointer-events-none"></div>
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
+<!-- System Status Bar -->
+<div class="w-full max-w-3xl mb-12 flex justify-between items-end">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
+<span class="text-[10px] font-mono text-primary/80 tracking-widest uppercase">System Online // Node_042</span>
+</div>
+<h1 class="text-4xl font-headline font-bold text-on-surface tracking-tighter">
+                    Synthetic <span class="text-primary">Intelligence</span> Terminal
+                </h1>
+</div>
+<div class="text-right hidden sm:block">
+<p class="text-[10px] font-mono text-on-surface/40 uppercase tracking-widest">Active session</p>
+<p class="text-xs font-mono text-on-surface/70 tracking-tighter">0x4F2...3E9A</p>
+</div>
+</div>
+<!-- Query Input Section -->
+<div class="w-full max-w-3xl space-y-4">
+<div class="relative terminal-glow group transition-all duration-300">
+<div class="absolute -inset-[1px] bg-gradient-to-r from-primary/20 via-primary/5 to-primary/20 opacity-50 group-focus-within:opacity-100 rounded-lg transition-opacity"></div>
+<div class="relative bg-[#1A1D27] rounded-lg overflow-hidden border border-[#2A2D3A] transition-colors group-focus-within:border-primary/40">
+<div class="flex items-start p-4 gap-4">
+<div class="mt-1">
+<span class="material-symbols-outlined text-primary/60">psychology</span>
+</div>
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface/20 font-body text-lg resize-none" placeholder="Ask a research question..." rows="4"></textarea>
+</div>
+<div class="flex items-center justify-between px-4 py-3 bg-[#0c0e14]/50 border-t border-[#2A2D3A]">
+<div class="flex gap-2">
+<button class="p-1.5 hover:bg-surface-container-high rounded text-on-surface/40 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">attach_file</span>
+</button>
+<button class="p-1.5 hover:bg-surface-container-high rounded text-on-surface/40 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">language</span>
+</button>
+<button class="p-1.5 hover:bg-surface-container-high rounded text-on-surface/40 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">data_object</span>
+</button>
+</div>
+<button class="group flex items-center gap-2 bg-[#FF702E] hover:bg-[#ff8a52] text-[#381700] font-headline font-bold px-5 py-2 rounded-sm transition-all active:scale-[0.98]">
+<span class="text-sm uppercase tracking-tight">Generate Report</span>
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Quick Suggestions / Metadata -->
+<div class="flex flex-wrap gap-2 pt-2">
+<span class="text-[10px] font-mono text-on-surface/30 uppercase tracking-widest mr-2 self-center">Suggestions:</span>
+<button class="px-3 py-1 bg-surface-container rounded-sm border border-outline-variant/20 text-[11px] text-on-surface/60 hover:text-primary hover:border-primary/30 transition-all font-mono">Quantum Cryptography</button>
+<button class="px-3 py-1 bg-surface-container rounded-sm border border-outline-variant/20 text-[11px] text-on-surface/60 hover:text-primary hover:border-primary/30 transition-all font-mono">Market Analysis 2024</button>
+<button class="px-3 py-1 bg-surface-container rounded-sm border border-outline-variant/20 text-[11px] text-on-surface/60 hover:text-primary hover:border-primary/30 transition-all font-mono">Bio-Engineering Ethics</button>
+</div>
+</div>
+<!-- Asymmetric Data Display (Bento/Card Style) -->
+<section class="w-full max-w-6xl mt-24 grid grid-cols-12 gap-6">
+<!-- Large Focus Card -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container border border-outline-variant/10 p-6 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-8xl">analytics</span>
+</div>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-8">
+<div>
+<span class="text-[10px] font-mono text-primary uppercase tracking-widest">Active Analysis</span>
+<h3 class="text-xl font-headline font-bold mt-1">Global Economic Sentiment</h3>
+</div>
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-sm bg-primary-container/20 border border-primary/30 flex items-center justify-center text-[10px] font-mono">A1</div>
+<div class="w-8 h-8 rounded-sm bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-[10px] font-mono">B4</div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="h-[120px] w-full bg-surface-container-lowest/50 rounded-sm relative overflow-hidden">
+<!-- Simulated Chart -->
+<div class="absolute bottom-0 inset-x-0 h-1/2 flex items-end px-4 gap-1">
+<div class="w-full bg-primary/20 h-1/4"></div>
+<div class="w-full bg-primary/40 h-2/4"></div>
+<div class="w-full bg-primary/60 h-3/4"></div>
+<div class="w-full bg-primary/30 h-1/4"></div>
+<div class="w-full bg-primary/50 h-2/3"></div>
+<div class="w-full bg-primary/80 h-full"></div>
+<div class="w-full bg-primary/40 h-1/2"></div>
+</div>
+</div>
+<p class="text-sm text-on-surface/60 font-body leading-relaxed max-w-xl">
+                            Real-time cross-referencing of 14,000+ datasets indicates a 12% shift in high-frequency trading patterns within the semiconductor sector.
+                        </p>
+</div>
+</div>
+</div>
+<!-- Side Card Stack -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<div class="bg-surface-container-low border border-outline-variant/10 p-5">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary text-xl">history</span>
+<h4 class="text-xs font-mono uppercase tracking-widest">Recent Logs</h4>
+</div>
+<ul class="space-y-3">
+<li class="flex items-center justify-between group cursor-pointer">
+<span class="text-xs text-on-surface/50 font-mono group-hover:text-on-surface transition-colors">QUERY_334_SENTIMENT</span>
+<span class="text-[10px] text-primary/40">2M AGO</span>
+</li>
+<li class="flex items-center justify-between group cursor-pointer">
+<span class="text-xs text-on-surface/50 font-mono group-hover:text-on-surface transition-colors">DATA_MOD_GEN_99</span>
+<span class="text-[10px] text-primary/40">15M AGO</span>
+</li>
+<li class="flex items-center justify-between group cursor-pointer">
+<span class="text-xs text-on-surface/50 font-mono group-hover:text-on-surface transition-colors">SYSTEM_ARCHIVE_RETR</span>
+<span class="text-[10px] text-primary/40">1H AGO</span>
+</li>
+</ul>
+</div>
+<div class="bg-primary/5 border border-primary/20 p-5 relative">
+<div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent blur-xl"></div>
+<h4 class="text-xs font-mono uppercase tracking-widest text-primary mb-2">Resource Usage</h4>
+<div class="space-y-3">
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-1">
+<span>COMPUTE</span>
+<span>88%</span>
+</div>
+<div class="w-full bg-surface-container-high h-1">
+<div class="bg-primary h-full w-[88%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-mono mb-1">
+<span>MEMORY</span>
+<span>42%</span>
+</div>
+<div class="w-full bg-surface-container-high h-1">
+<div class="bg-primary h-full w-[42%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Visual Footer Branding -->
+<footer class="mt-auto border-t border-[#ffffff]/5 p-8 flex flex-col items-center">
+<div class="flex gap-12 opacity-30 grayscale hover:grayscale-0 transition-all duration-500">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined">api</span>
+<span class="font-mono text-[10px] uppercase tracking-widest">Neural API v4</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined">security</span>
+<span class="font-mono text-[10px] uppercase tracking-widest">End-to-End Encrypted</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined">cloud_done</span>
+<span class="font-mono text-[10px] uppercase tracking-widest">Sync Active</span>
+</div>
+</div>
+<p class="mt-8 text-[10px] font-mono text-on-surface/20 uppercase tracking-[0.3em]">Research Copilot Terminal // Distributed Architecture</p>
+</footer>
+</body></html>

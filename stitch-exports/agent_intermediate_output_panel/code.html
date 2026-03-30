@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk+Monospace&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "inverse-primary": "#a43d00",
+            "on-secondary": "#2d303d",
+            "surface-container": "#1e1f26",
+            "on-error": "#690005",
+            "inverse-surface": "#e2e2eb",
+            "surface": "#111319",
+            "on-surface-variant": "#bacac2",
+            "on-primary-fixed-variant": "#6b2300",
+            "inverse-on-surface": "#2e3037",
+            "primary-fixed": "#ffdbcb",
+            "tertiary-fixed-dim": "#c4c6d3",
+            "primary": "#FF702E",
+            "tertiary-container": "#b9bbc9",
+            "secondary-container": "#434654",
+            "on-secondary-fixed": "#181b27",
+            "background": "#111319",
+            "on-secondary-fixed-variant": "#434654",
+            "outline": "#85948d",
+            "on-tertiary": "#2d303b",
+            "surface-dim": "#111319",
+            "secondary-fixed-dim": "#c4c5d6",
+            "primary-fixed-dim": "#ffb690",
+            "on-primary-container": "#6b2300",
+            "surface-tint": "#FF702E",
+            "secondary": "#c4c5d6",
+            "tertiary-fixed": "#e0e2f0",
+            "surface-bright": "#373940",
+            "on-secondary-container": "#b2b4c5",
+            "on-primary-fixed": "#2e0900",
+            "on-background": "#e2e2eb",
+            "tertiary": "#d5d7e5",
+            "on-tertiary-container": "#484b56",
+            "error": "#ffb4ab",
+            "outline-variant": "#3b4a44",
+            "primary-container": "#FF702E",
+            "on-tertiary-fixed": "#181b25",
+            "secondary-fixed": "#e0e1f3",
+            "surface-container-high": "#282a30",
+            "on-surface": "#e2e2eb",
+            "surface-container-low": "#191b22",
+            "error-container": "#93000a",
+            "surface-container-lowest": "#0c0e14",
+            "surface-container-highest": "#33343b",
+            "on-primary": "#ffffff",
+            "on-tertiary-fixed-variant": "#444652",
+            "surface-variant": "#33343b",
+            "on-error-container": "#ffdad6"
+          },
+          fontFamily: {
+            "headline": ["Space Grotesk"],
+            "body": ["Inter"],
+            "label": ["Space Grotesk Monospace"]
+          },
+          borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0c0e14;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3b4a44;
+    }
+    .terminal-key { color: #FF702E; }
+    .terminal-val { color: #FFAA33; }
+    .terminal-ts { color: #85948d; }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body overflow-hidden h-screen flex flex-col">
+<!-- Top Navigation (Shell Component) -->
+<header class="bg-[#111319] border-b border-[#1b1e26] flex justify-between items-center w-full px-6 py-4 z-40">
+<div class="flex items-center gap-8">
+<div class="text-xl font-bold text-[#FF702E] uppercase tracking-widest font-headline">Synthetic Intelligence Terminal</div>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="text-[#FF702E] border-b-2 border-[#FF702E] pb-1 font-headline tracking-tight transition-colors" href="#">Dashboard</a>
+<a class="text-[#e2e2eb]/60 hover:text-[#FF702E] font-headline tracking-tight transition-colors" href="#">Research</a>
+<a class="text-[#e2e2eb]/60 hover:text-[#FF702E] font-headline tracking-tight transition-colors" href="#">Library</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden lg:flex items-center bg-surface-container-lowest px-3 py-1.5 border border-outline-variant/30">
+<span class="material-symbols-outlined text-sm text-primary mr-2">search</span>
+<input class="bg-transparent border-none text-xs font-label focus:ring-0 w-48 text-on-surface p-0 uppercase" placeholder="QUERY DATABASE..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 bg-primary-container flex items-center justify-center overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="minimal geometric avatar with teal and dark blue shapes on a neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARMhGbqBQ3NAEkEVHftOZieHv7HdHo-I5bJN5M5wCdElD27Vys_IXS31CCILUpriQcvZgAKlT1vkQbAE2vSska5f-M3e4Tw76JagTzlyCYqqbp4JBHHKq8g-SToPIghjpQ4zw7UCHuUCQrEHFhXcCooa43pjix0LntLMdcHgnIoIc-nVRdFMUTiqBtoox0QwK0LCa6VuueBQ4Be7_iVkR4BXoPZt_M3Suok6kVuIv_D3Bln4W8hcDy9T_vYuiJsn3MXaoAm0cbLk3i"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow flex relative overflow-hidden">
+<!-- Content Area: Bento Grid Layout -->
+<div class="flex-grow p-8 overflow-y-auto custom-scrollbar pb-24">
+<div class="grid grid-cols-12 gap-6 max-w-7xl mx-auto">
+<!-- Hero Status Card -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest border border-outline-variant/10 p-6 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="flex justify-between items-start mb-8">
+<div>
+<div class="text-primary font-label text-[10px] tracking-[0.2em] mb-1">CURRENT SEQUENCE</div>
+<h1 class="text-4xl font-headline font-bold text-on-surface tracking-tight">Neural Synthesis Alpha-9</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 bg-primary animate-pulse"></span>
+<span class="text-xs font-label text-primary">PROCESSING ACTIVE</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-8">
+<div>
+<div class="text-on-surface-variant font-label text-[10px] mb-2">LATENCY</div>
+<div class="text-2xl font-headline font-light">14ms</div>
+</div>
+<div>
+<div class="text-on-surface-variant font-label text-[10px] mb-2">TOKENS/SEC</div>
+<div class="text-2xl font-headline font-light">842.0</div>
+</div>
+<div>
+<div class="text-on-surface-variant font-label text-[10px] mb-2">CONFIDENCE</div>
+<div class="text-2xl font-headline font-light">0.992</div>
+</div>
+</div>
+</div>
+<!-- Sidebar Activity -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container p-6 border border-outline-variant/10">
+<div class="text-on-surface-variant font-label text-[10px] tracking-[0.2em] mb-6">RESOURCE ALLOCATION</div>
+<div class="space-y-6">
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-label">
+<span>COMPUTE ENGINE</span>
+<span class="text-primary">88%</span>
+</div>
+<div class="h-1 bg-surface-container-highest w-full">
+<div class="h-full bg-primary" style="width: 88%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[10px] font-label">
+<span>MEMORY BUFFER</span>
+<span class="text-primary">42%</span>
+</div>
+<div class="h-1 bg-surface-container-highest w-full">
+<div class="h-full bg-primary" style="width: 42%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Narrative Output -->
+<div class="col-span-12 bg-surface-container p-8 border border-outline-variant/10">
+<div class="flex gap-4 items-start">
+<div class="w-10 h-10 bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">terminal</span>
+</div>
+<div class="space-y-4">
+<div class="font-headline text-xl font-semibold">Executive Intelligence Summary</div>
+<div class="text-on-surface-variant leading-relaxed max-w-3xl">
+                The agent has successfully identified three primary vectors for the quantum market transition. Analysis confirms that legacy protocols will be obsolete within the next fiscal cycle. Strategic alignment suggests immediate deployment of the synthetic bridge architecture to mitigate risk.
+              </div>
+<button class="bg-primary-container text-on-primary px-6 py-2 font-label text-xs tracking-widest hover:shadow-[0_0_15px_rgba(255,112,46,0.3)] transition-all">
+                EXPORT ARCHIVE
+              </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- COLLAPSIBLE AGENT LOGS PANEL -->
+<input class="hidden peer" id="agent-logs-toggle" type="checkbox"/>
+<footer class="fixed bottom-0 left-0 w-full z-50 transition-all duration-300 ease-in-out bg-[#0F1117] border-t border-outline-variant/20 flex flex-col peer-checked:h-[614px] h-12 overflow-hidden shadow-[0_-4px_30px_rgba(0,0,0,0.5)]">
+<!-- Collapsed State / Handle Bar -->
+<label class="cursor-pointer flex justify-between items-center px-6 h-12 hover:bg-surface-container-highest/30 transition-colors shrink-0" for="agent-logs-toggle">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 bg-primary rounded-full"></span>
+<span class="text-xs font-label uppercase tracking-widest text-on-surface">Agent Logs</span>
+<span class="text-[10px] font-label text-on-surface-variant ml-4 px-2 py-0.5 border border-outline-variant/30">v2.0.4-STABLE</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-[10px] font-label text-primary uppercase peer-checked:hidden">View Agent Outputs</span>
+<span class="material-symbols-outlined text-on-surface-variant transition-transform duration-300 peer-checked:rotate-180">keyboard_arrow_up</span>
+</div>
+</label>
+<!-- Expanded State Content -->
+<div class="flex-grow flex flex-col overflow-hidden opacity-0 peer-checked:opacity-100 transition-opacity duration-300 delay-100">
+<!-- Tab Bar -->
+<div class="flex border-b border-outline-variant/10 px-6 bg-[#0F1117]">
+<input checked="" class="hidden peer/planner" id="tab-planner" name="log-tabs" type="radio"/>
+<label class="px-6 py-3 text-[10px] font-label uppercase tracking-tighter cursor-pointer border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-all peer-checked/planner:border-primary peer-checked/planner:text-primary peer-checked/planner:bg-primary/5" for="tab-planner">
+          Planner
+        </label>
+<input class="hidden peer/research" id="tab-research" name="log-tabs" type="radio"/>
+<label class="px-6 py-3 text-[10px] font-label uppercase tracking-tighter cursor-pointer border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-all peer-checked/research:border-primary peer-checked/research:text-primary peer-checked/research:bg-primary/5" for="tab-research">
+          Research
+        </label>
+<input class="hidden peer/writer" id="tab-writer" name="log-tabs" type="radio"/>
+<label class="px-6 py-3 text-[10px] font-label uppercase tracking-tighter cursor-pointer border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-all peer-checked/writer:border-primary peer-checked/writer:text-primary peer-checked/writer:bg-primary/5" for="tab-writer">
+          Writer
+        </label>
+<input class="hidden peer/evaluator" id="tab-evaluator" name="log-tabs" type="radio"/>
+<label class="px-6 py-3 text-[10px] font-label uppercase tracking-tighter cursor-pointer border-b-2 border-transparent text-on-surface-variant hover:text-on-surface transition-all peer-checked/evaluator:border-primary peer-checked/evaluator:text-primary peer-checked/evaluator:bg-primary/5" for="tab-evaluator">
+          Evaluator
+        </label>
+<div class="flex-grow"></div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<span class="text-[10px] font-label">EXECUTION_ID: AX-7700</span>
+<span class="material-symbols-outlined text-sm">content_copy</span>
+</div>
+</div>
+<!-- Tab Panels -->
+<div class="flex-grow overflow-hidden relative">
+<!-- Planner Tab Content -->
+<div class="absolute inset-0 p-6 overflow-y-auto custom-scrollbar bg-[#12141C] invisible peer-checked/planner:visible">
+<pre class="font-label text-xs leading-relaxed"><span class="terminal-ts">[14:20:01]</span> <span class="terminal-key">"plan_id"</span>: <span class="terminal-val">"SYNTH_ALPHA_9"</span>,
+<span class="terminal-ts">[14:20:01]</span> <span class="terminal-key">"objectives"</span>: [
+<span class="terminal-ts">[14:20:02]</span>   {
+<span class="terminal-ts">[14:20:02]</span>     <span class="terminal-key">"subtopic"</span>: <span class="terminal-val">"Market Volatility Analysis"</span>,
+<span class="terminal-ts">[14:20:02]</span>     <span class="terminal-key">"priority"</span>: <span class="terminal-val">"CRITICAL"</span>,
+<span class="terminal-ts">[14:20:03]</span>     <span class="terminal-key">"status"</span>: <span class="terminal-val">"COMPLETED"</span>
+<span class="terminal-ts">[14:20:03]</span>   },
+<span class="terminal-ts">[14:20:03]</span>   {
+<span class="terminal-ts">[14:20:04]</span>     <span class="terminal-key">"subtopic"</span>: <span class="terminal-val">"Legacy Protocol Migration"</span>,
+<span class="terminal-ts">[14:20:04]</span>     <span class="terminal-key">"priority"</span>: <span class="terminal-val">"HIGH"</span>,
+<span class="terminal-ts">[14:20:05]</span>     <span class="terminal-key">"status"</span>: <span class="terminal-val">"IN_PROGRESS"</span>
+<span class="terminal-ts">[14:20:05]</span>   }
+<span class="terminal-ts">[14:20:06]</span> ],
+<span class="terminal-ts">[14:20:06]</span> <span class="terminal-key">"execution_duration"</span>: <span class="terminal-val">"452ms"</span>
+          </pre>
+</div>
+<!-- Research Tab Content -->
+<div class="absolute inset-0 p-6 overflow-y-auto custom-scrollbar bg-[#12141C] invisible peer-checked/research:visible">
+<div class="font-label text-xs space-y-4">
+<div class="border-l border-primary/30 pl-4 py-1">
+<span class="terminal-ts">[14:21:44]</span> <span class="text-on-surface/80">SOURCE_ID: JSTOR_8829</span><br/>
+<span class="text-on-surface">"The transition to post-quantum cryptography is necessitated by the rapid advancement of shoring algorithms..."</span>
+</div>
+<div class="border-l border-primary/30 pl-4 py-1">
+<span class="terminal-ts">[14:22:12]</span> <span class="text-on-surface/80">SOURCE_ID: IEEE_CORE_V2</span><br/>
+<span class="text-on-surface">"Benchmark data suggests a 40% reduction in overhead when using the synthetic bridge architecture in high-density environments."</span>
+</div>
+<div class="text-[10px] text-primary/50 italic">RESEARCH PHASE DURATION: 1.2s</div>
+</div>
+</div>
+<!-- Writer Tab Content -->
+<div class="absolute inset-0 p-6 overflow-y-auto custom-scrollbar bg-[#12141C] invisible peer-checked/writer:visible">
+<pre class="font-body text-sm text-on-surface leading-loose"><span class="text-primary font-label"># DRAFT: EXECUTIVE SUMMARY</span>
+
+<span class="text-on-surface-variant italic">## Background</span>
+The analysis of **Sequence Alpha-9** indicates a structural shift in data persistence layers. 
+
+<span class="text-on-surface-variant italic">## Key Findings</span>
+1. **Latency thresholds** have been exceeded by 14% in the current quarter.
+2. **Synthetic Intelligence** agents are successfully navigating the new sub-layer.
+
+<span class="text-primary font-label">--- END OF DRAFT ---</span>
+          </pre>
+</div>
+<!-- Evaluator Tab Content -->
+<div class="absolute inset-0 p-6 overflow-y-auto custom-scrollbar bg-[#12141C] invisible peer-checked/evaluator:visible">
+<div class="space-y-4 font-label text-xs">
+<div class="flex items-center justify-between bg-surface-container p-4">
+<span class="text-on-surface-variant">ALIGNMENT SCORE</span>
+<span class="text-primary text-xl font-bold">0.982 / 1.0</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-4">
+<span class="text-on-surface-variant block mb-2">FACTUALITY</span>
+<span class="text-primary">PASS</span>
+</div>
+<div class="bg-surface-container-low p-4">
+<span class="text-on-surface-variant block mb-2">TONE_CONSISTENCY</span>
+<span class="text-primary">PASS</span>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low">
+<span class="text-on-surface-variant block mb-2">REASONING_LOG</span>
+<p class="text-on-surface leading-relaxed">
+                  The outputs meet all technical specifications for the 'Sovereign Analyst' persona. Minor adjustment required in Section 4 to reduce token redundancy. Total cycle cost within bounds.
+                </p>
+</div>
+<div class="terminal-ts text-[10px]">EVALUATION COMPLETED IN 88ms // NO ANOMALIES DETECTED</div>
+</div>
+</div>
+</div>
+</div>
+</footer>
+</body></html>
