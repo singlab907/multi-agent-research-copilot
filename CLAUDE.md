@@ -54,26 +54,34 @@ The top-level state machine. Owns all app state, mock data builders, and wires e
 - `stepLoading`: `boolean` — whether the current step's simulated loading is in progress
 - `viewingStep`: `number | null` — when non-null, the user is viewing a past step read-only in the main area; null means show the current active step
 - `plannerOutput`: `string[]` — list of subtopic strings (editable by user)
-- `researcherOutput`: `ResearchTopic[]` — per-subtopic findings, sources, personalNote (editable)
-- `writerOutput`: `{ title: string, sections: { heading, content }[] }` — draft report (editable)
+- `researcherOutput`: `ResearchTopic[]` — per-subtopic findings, sources, personalNote (editable); empty array `[]` means research hasn't been fetched yet (shows pre-decision UI). Shape: `{ heading: string, findings: string[], personalNote: string, sources: { title: string, publication: string, year: string }[] }`
+- `writerOutput`: `{ title: string, sections: { heading: string, content: string }[] }` — draft report (editable)
+- `researchSkipped`: `boolean` — true when user bypassed Agent Researcher; shows SKIPPED state in sidebar and stepper
+
+**Derived values:**
+- `researchRecommended`: `boolean` — computed from query using `isResearchRecommended(query)`. Returns true if query contains any of: `compare, impact, analysis, analyze, analyse, data, statistics, statistic, research, study, evidence, trend, trends, report, market`. This logic is a placeholder for the real planner agent classification.
 
 **Mock data builders** (module-level pure functions):
 - `buildPlannerOutput()` → returns 5 hardcoded subtopic strings
 - `buildResearcherOutput(subtopics)` → maps subtopics to findings+sources from a 5-item data array (cycles `data[0]` for extras)
-- `buildWriterOutput(researcherOutput)` → assembles title + Introduction + per-subtopic sections + Conclusion from researcher output; personal notes are appended inline
+- `buildWriterOutput(researcherOutput)` → assembles title + Introduction + per-subtopic sections + Conclusion from researcher output; personal notes are appended inline. When called with empty findings (skip path), sections are created with empty content.
 
 **Sidebar pipeline tracker mapping:**
 - `sidebarAgentStep = wizardStep - 1` (so sidebar agent index matches wizard step)
 - `sidebarAppState` = `'processing'` during wizard, `'complete'` on step 4 after loading, else mirrors `appState`
+- `pipelineStatus` now includes `researchSkipped` — passed to Layout to show SKIPPED state for Agent Researcher
 
 **Handlers:**
-- `handleSubmit(q)` — sets query, initialises plannerOutput, sets appState to `'wizard'`, triggers 2s loading
-- `handleProceedFromPlanner()` — builds researcherOutput from current plannerOutput, advances to step 2, triggers 3s loading
+- `handleSubmit(q)` — sets query, initialises plannerOutput, sets appState to `'wizard'`, triggers 2s loading; resets `researchSkipped`
+- `handleProceedFromPlanner()` — navigates to step 2 with empty researcherOutput and no loading (shows pre-decision UI)
+- `handleRunResearch()` — called from researcher pre-decision screen; builds researcherOutput, triggers 3s loading
+- `handleSkipToWriter()` — builds writerOutput from planner subtopics (no findings/sources), sets `researchSkipped=true`, advances to step 3 with 3s loading
+- `handleSkipResearch()` — alias for `handleSkipToWriter()`; called from the researcher pre-decision "Skip Research" button
 - `handleProceedFromResearcher()` — builds writerOutput from current researcherOutput, advances to step 3, triggers 3s loading
 - `handleProceedFromWriter()` — advances to step 4, triggers 2s loading
 - `handleViewStep(step)` — sets `viewingStep` to a past step number; sidebar calls this when user clicks a completed agent
 - `handleBackToCurrentStep()` — clears `viewingStep` to null; called by the "Back to current step" banner in WizardScreen
-- `handleNewResearch()` — resets all state to idle (including `viewingStep`)
+- `handleNewResearch()` — resets all state to idle (including `viewingStep`, `researchSkipped`)
 - `handleRetry()` — resets appState to idle
 
 **Render:** `key={appState === 'wizard' ? \`wizard-${viewingStep ?? wizardStep}\` : appState}` on the wrapper div — triggers fadeSlideIn on every step transition and when switching to/from a past-step view.
@@ -95,16 +103,18 @@ Props:
 {
   activeNav:      string,           // default 'Research'
   activeTopNav:   string,           // default 'Workspace'
-  pipelineStatus: { appState, agentStep },
+  pipelineStatus: { appState, agentStep, researchSkipped },
   onNewResearch:  () => void,
   viewingStep:    number | null,    // which past step is being viewed (for VIEW badge)
   onViewStep:     (step: number) => void,  // called when user clicks a completed pipeline agent
 }
 ```
 
+`pipelineItemState(index, appState, agentStep, researchSkipped)` — extended to return `'skipped'` for index 1 (Agent Researcher) when `researchSkipped=true`. Skipped items render with `remove_circle` icon, strikethrough label, and "SKIP" badge. They are not clickable.
+
 ### `screens/WelcomeScreen.jsx`
-- Default export `WelcomeScreen` wraps `WelcomeContent` in its own Layout (for standalone use)
-- Named export `WelcomeContent` — used by App.jsx
+- Default export `WelcomeScreen` — wraps `WelcomeContent` in its own `Layout`; used for standalone rendering only
+- Named export `WelcomeContent` — used by `App.jsx` (already inside Layout, so no double-wrap)
 - Props: `{ onSubmit: (query: string) => void }`
 - Has a controlled `<textarea>` + "Generate Report" button (disabled when empty)
 - Four suggestion chip buttons that auto-fill and submit the query
@@ -122,23 +132,28 @@ Props:
   stepLoading:             boolean,
   query:                   string,
   plannerOutput:           string[],
-  researcherOutput:        ResearchTopic[],
+  researcherOutput:        ResearchTopic[],    // empty [] = research not yet fetched (pre-decision)
   writerOutput:            { title, sections },
   onPlannerChange:         (subtopics: string[]) => void,
   onResearcherChange:      (research: ResearchTopic[]) => void,
   onWriterChange:          (report: WriterOutput) => void,
-  onProceedFromPlanner:    () => void,
-  onProceedFromResearcher: () => void,
+  onProceedFromPlanner:    () => void,         // navigates to step 2, no loading
+  onSkipToWriter:          () => void,         // skips researcher, goes to step 3
+  onRunResearch:           () => void,         // triggers research fetch from pre-decision UI
+  onProceedFromResearcher: () => void,         // proceeds to Writer after research
+  onSkipResearch:          () => void,         // skips from researcher pre-decision to Writer
   onProceedFromWriter:     () => void,
   onNewResearch:           () => void,
   displayStep:             number | null,      // null = show current step; past step = read-only view
   onBackToCurrentStep:     () => void,         // called by the read-only banner to dismiss view
+  researchRecommended:     boolean,            // drives recommendation box + button prominence
+  researchSkipped:         boolean,            // drives stepper skipped state
 }
 ```
 
 **Internal sub-components:**
 
-`Stepper({ currentStep })` — horizontal progress bar at top of each step. Steps before current show green check; current step highlighted orange with a glow ring (`boxShadow: '0 0 0 3px rgba(255,112,46,0.15)'`); future steps greyed out. Connectors between steps are `chevron_right` Material Symbol icons (green when preceding step is done, faint otherwise). Labels use the full "Agent Planner / Agent Researcher / Agent Writer / Agent Evaluator" naming.
+`Stepper({ currentStep, researchSkipped })` — horizontal progress bar at top of each step. Steps before current show green check; current step highlighted orange with a glow ring (`boxShadow: '0 0 0 3px rgba(255,112,46,0.15)'`); future steps greyed out; skipped step (index 1) shows a `remove` icon with strikethrough label. Connectors between steps are `chevron_right` Material Symbol icons (green when preceding step is done, faint otherwise). Labels use the full "Agent Planner / Agent Researcher / Agent Writer / Agent Evaluator" naming.
 
 `LoadingState({ message })` — layered spinner (outer track ring + spinning border ring + inner ring + center dot) with three staggered pulsing dots (`animationDelay` 0/150/300ms) and pulsing mono text below. Shown while `stepLoading` is true.
 
@@ -146,36 +161,67 @@ Props:
 
 `ProceedButton({ onClick, disabled, children })` — shared orange primary CTA button.
 
-`PlannerStep({ loading, subtopics, onChange, onProceed })`:
+`PlannerStep({ loading, subtopics, onChange, onProceed, onSkipToWriter, researchRecommended, readOnly })`:
 - Shows the Planner Agent output: an ordered list of editable text inputs (one per subtopic)
 - User can edit each subtopic title inline; inputs have `cursor-text`, `hover:border-outline-variant/40`, `focus:bg-surface-container-low`
 - "×" button removes a subtopic
 - "+ Add subtopic" is a full-width dashed ghost button (`border-dashed border-outline-variant/20 hover:border-primary/30`)
-- "Proceed to Research →" button disabled if all subtopic fields are empty
+- **Research Recommendation box**: shown below the subtopic list
+  - `researchRecommended=true` → green box (`bg-emerald-400/5 border-emerald-400/20`) with `check_circle` icon and "Research recommended" message
+  - `researchRecommended=false` → orange box (`bg-primary/5 border-primary/20`) with `bolt` icon and "No research required" message
+- **Dual action buttons**: "Proceed to Agent Researcher →" and "Skip to Agent Writer →" always both visible
+  - `researchRecommended=true`: Proceed = primary orange, Skip = secondary outline
+  - `researchRecommended=false`: Skip = primary orange, Proceed = secondary outline
+  - Both disabled when all subtopic fields are empty
 
-`ResearcherStep({ loading, research, onChange, onProceed })`:
+`ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch, onRunResearch, researchRecommended, readOnly })`:
+- **Pre-decision UI**: shown when `research.length === 0 && !loading && !readOnly`. Displays "Run the Research Agent?" with "Run Research →" (primary) and "Skip Research →" (secondary) buttons. If `researchRecommended=false`, shows a note: "The planner suggested skipping research for this query, but you can still run it if you'd like." Clicking "Run Research →" calls `onRunResearch` which triggers actual research loading. Clicking "Skip Research →" calls `onSkipResearch` which skips to Writer.
 - Shows per-subtopic research: editable multi-line findings (one `<textarea>` per bullet), a personal note textarea, and a sources list
 - Finding textareas have `cursor-text`, `hover:border-outline-variant/35`, `focus:bg-surface-container-low`
 - Personal note textarea uses `border-dashed` to signal it's optional; converts to `focus:border-solid` on focus
 - Sources show title + year; hover reveals "×" to remove
 - "Add source" inline input + button appends a new user-defined source
-- `newSourceUrls` local state tracks the add-source input per subtopic (not lifted to App)
+- `newSourceUrls` local state (`string[]`, one entry per subtopic, initialised to `research.map(() => '')`) tracks the add-source input value per subtopic — not lifted to App
 
-`WriterStep({ loading, report, onChange, onProceed })`:
+`WriterStep({ loading, report, onChange, onProceed, readOnly, researchSkipped })`:
+- **Context banner** at the top (shown in both editable and read-only modes):
+  - `researchSkipped=false` → green-tinted bar (`bg-emerald-400/5 border-emerald-400/15`) with `bar_chart` icon: "Using research data from Agent Researcher"
+  - `researchSkipped=true` → orange-tinted bar (`bg-primary/5 border-primary/15`) with `edit_note` icon: "Generating without research data — based on planner subtopics only"
 - Shows the Writer Agent's draft: editable title (`<input>`) + per-section heading/content (`<input>` + `<textarea>`)
 - All editable fields have `cursor-text`, `hover:border-outline-variant/40` (or `/30` for textareas), `focus:border-primary/50`
 - Title input gets `focus:bg-surface-container-low` for depth feedback
 - All edits update `writerOutput` in App state via `onWriterChange`
 - "Get Final Report →" advances to Evaluator
 
-`EvaluatorStep({ loading, report, onNewResearch })`:
+`ConfidenceGauge({ confidence })` — extracted SVG gauge component (r=54, circumference=339.3). Used inside `EvalScores`, reused for both initial and revised evaluations via `activeEval`.
+
+`EvalScores({ evalData })` — extracted scores panel: renders the 3 metric cards (Accuracy / Completeness / Clarity each with a glowing `bg-primary` progress bar), then a 2-column row with `ConfidenceGauge` + Hallucination Risk badge (LOW=emerald, MEDIUM=yellow, else=error; badge text is `{risk}_LEVEL / Verified`) and a token usage bar + latency display. Accepts either `MOCK_EVALUATION` or `MOCK_REVISED_EVALUATION`.
+
+`EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch })`:
 - Read-only evaluation results: Accuracy / Completeness / Clarity metric cards (score + glowing progress bar + reasoning text)
-- SVG confidence gauge (r=54, circumference=339.3, 85%)
-- Hallucination Risk badge
-- Token usage bar + latency display
+- SVG confidence gauge, Hallucination Risk badge, token usage bar, latency display
 - Full final report rendered as a read-only article (user's edited draft)
-- Three action buttons: "Export Report", "Export Evaluation", "+ New Research"
-- All evaluation data is hardcoded in `MOCK_EVALUATION` constant inside `WizardScreen.jsx`
+- Export buttons: "Report" (.md) and "Evaluation" (.json) — unchanged
+- "+ New Research" button — unchanged
+- **"Resend to Writer" button**: secondary outline, placed beside export buttons. Disabled (showing "Revision used (1/1)") once `revisionUsed=true`. Only 1 manual revision allowed total.
+- **Feedback loop** (internal state machine, no props changes needed):
+  - `loopPhase`: `'idle' | 'warning' | 'sending' | 'writing' | 'reevaluating' | 'revised'`
+  - `revisionUsed`: `boolean` — set to true after loop completes; caps total rewrites at 1
+  - `activeEval`: `useState(initialEval)` — starts as `MOCK_EVALUATION`, swaps to `MOCK_REVISED_EVALUATION` on revision completion; passed directly to `<EvalScores evalData={activeEval} />`
+  - `sequenceActive` ref: prevents double-trigger of manual resend
+  - **Auto-trigger**: on mount, if `MOCK_EVALUATION.confidence < 70`, sets `loopPhase='warning'`
+  - **Phase timings** (driven by `useEffect` on `loopPhase`):
+    - `warning` → `sending` after 2s
+    - `sending` → `writing` after 1s
+    - `writing` → `reevaluating` after 3s (shows LoadingState with Writer message)
+    - `reevaluating` → `revised` after 2s (shows LoadingState with re-eval message); swaps `activeEval` to revised data, sets `revisionUsed=true`
+  - During `writing` and `reevaluating` phases, an orange "REVISING — Agent Evaluator" pill header is shown above the loader
+  - **`loopPhase='warning'`**: red error banner "Report needs improvement — Confidence score below threshold" with PROCESSING… pulse
+  - **`loopPhase='sending'`**: orange info bar "Sending feedback to Agent Writer for revision…" with pulse dot
+  - **`loopPhase='revised'`**: green success banner "Report improved after revision — Confidence: 88%" + "Max revision limit reached (1/1)" note
+  - **Manual resend** (`handleManualResend`): starts from `'sending'` phase if `!revisionUsed && !sequenceActive.current`
+- `MOCK_REVISED_EVALUATION` constant: accuracy 4.5, completeness 4.7, clarity 4.8, confidence 88%, hallucinationRisk LOW
+- `MOCK_EVALUATION.confidence` is currently set to **55** for testing the feedback loop. **TODO: restore to 85** after testing.
 
 ### `screens/ErrorScreen.jsx`
 - Named export `ErrorContent({ errorCode, subsystem, onRetry })`
@@ -304,6 +350,16 @@ The sidebar pipeline tracker reflects wizard progress:
 - [x] **Editable field styling** — all editable inputs/textareas have `cursor-text`, hover border brightening, and focus background deepening to clearly indicate editability
 - [x] **Ghost "Add" buttons** — "Add subtopic" and personal note textarea use dashed-border ghost style instead of text-only buttons
 - [x] **Animation key fix** — step content wrapper keyed on `${shownStep}-${isReadOnly}` so toggling read-only/live view also plays fadeSlideIn
+- [x] **Research recommendation logic** — `isResearchRecommended(query)` keyword matcher in App.jsx; drives recommendation box + button prominence in PlannerStep; placeholder for real planner agent classification
+- [x] **Planner skip path** — "Skip to Agent Writer →" button in PlannerStep; prominence swaps with Proceed button based on `researchRecommended`
+- [x] **Researcher pre-decision UI** — shown when `researcherOutput` is empty; "Run Research →" / "Skip Research →" buttons; optional planner-hint note when research not recommended
+- [x] **Research skipped state** — `researchSkipped` boolean in App state; propagated to Layout (`pipelineStatus`) and WizardScreen (`Stepper`); sidebar shows `remove_circle` icon + strikethrough + SKIP badge; stepper shows `remove` icon + strikethrough
+- [x] **`handleRunResearch`** — separate handler for triggering research fetch from pre-decision UI; `handleProceedFromPlanner` now only navigates to step 2 without starting a fetch
+- [x] **Writer context banner** — informational bar at top of WriterStep (both editable and read-only modes); green-tinted when research was used, orange-tinted when research was skipped; no interaction, display only
+- [x] **Evaluator feedback loop** — automatic revision cycle when `confidence < 70`; 5-phase timed state machine (`warning → sending → writing → reevaluating → revised`); scores swap to `MOCK_REVISED_EVALUATION` on completion; capped at 1 revision total
+- [x] **Manual "Resend to Writer" button** — outline button beside export buttons; triggers same revision sequence; disabled with "Revision used (1/1)" once revision cap reached (auto or manual)
+- [x] **`ConfidenceGauge` + `EvalScores`** — extracted from EvaluatorStep; reused for both eval passes
+- [ ] **Restore `MOCK_EVALUATION.confidence` to 85** — currently set to 55 for feedback loop testing
 
 ---
 

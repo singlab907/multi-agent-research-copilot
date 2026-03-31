@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // ── Mock evaluation data (read-only, used in step 4) ──────────────────────────
 const MOCK_EVALUATION = {
@@ -6,7 +6,7 @@ const MOCK_EVALUATION = {
   completeness: { score: 4.5, max: 5, reasoning: 'All requested subtopics covered thoroughly. Edge deployment section could benefit from additional technical depth.' },
   clarity:      { score: 4.6, max: 5, reasoning: 'Report is well-structured and accessible. Technical jargon is appropriately contextualised for enterprise audiences.' },
   hallucinationRisk: 'LOW',
-  confidence: 85,
+  confidence: 55, // TODO: set back to 85 after testing the feedback loop
   tokenUsage: 1402,
   tokenMax: 4096,
   latencyMs: 284,
@@ -71,13 +71,14 @@ const STEP_LABELS = [
   { label: 'Agent Evaluator',  icon: 'verified_user' },
 ]
 
-function Stepper({ currentStep }) {
+function Stepper({ currentStep, researchSkipped }) {
   return (
     <div className="flex items-center px-6 py-4 bg-surface border-b border-white/5 overflow-x-auto">
       {STEP_LABELS.map(({ label, icon }, i) => {
-        const stepNum  = i + 1
-        const isDone   = stepNum < currentStep
-        const isActive = stepNum === currentStep
+        const stepNum   = i + 1
+        const isSkipped = researchSkipped && stepNum === 2
+        const isDone    = !isSkipped && stepNum < currentStep
+        const isActive  = !isSkipped && stepNum === currentStep
         return (
           <div key={label} className="flex items-center shrink-0">
             {i > 0 && (
@@ -95,13 +96,16 @@ function Stepper({ currentStep }) {
               <div
                 className={[
                   'w-6 h-6 flex items-center justify-center text-[11px] font-mono font-bold border shrink-0 transition-all duration-200',
-                  isDone   ? 'bg-emerald-400/10 border-emerald-400 text-emerald-400' :
-                  isActive ? 'bg-primary/10 border-primary text-primary' :
-                             'bg-surface-container border-outline-variant/20 text-on-surface/20',
+                  isSkipped ? 'bg-surface-container border-outline-variant/20 text-on-surface/20' :
+                  isDone    ? 'bg-emerald-400/10 border-emerald-400 text-emerald-400' :
+                  isActive  ? 'bg-primary/10 border-primary text-primary' :
+                              'bg-surface-container border-outline-variant/20 text-on-surface/20',
                 ].join(' ')}
                 style={isActive ? { boxShadow: '0 0 0 3px rgba(255,112,46,0.15)' } : undefined}
               >
-                {isDone
+                {isSkipped
+                  ? <span className="material-symbols-outlined" style={{ fontSize: 13 }}>remove</span>
+                  : isDone
                   ? <span className="material-symbols-outlined" style={{ fontSize: 13, fontVariationSettings: "'FILL' 1" }}>check</span>
                   : stepNum}
               </div>
@@ -110,18 +114,20 @@ function Stepper({ currentStep }) {
                   className="material-symbols-outlined shrink-0"
                   style={{
                     fontSize: 12,
-                    color: isDone   ? '#4ade80' :
-                           isActive ? '#FF702E' :
-                                      'rgba(226,226,235,0.2)',
+                    color: isSkipped ? 'rgba(226,226,235,0.2)' :
+                           isDone    ? '#4ade80' :
+                           isActive  ? '#FF702E' :
+                                       'rgba(226,226,235,0.2)',
                   }}
                 >
                   {icon}
                 </span>
                 <span className={[
                   'text-[11px] font-mono uppercase tracking-wider',
-                  isDone   ? 'text-emerald-400' :
-                  isActive ? 'text-primary' :
-                             'text-on-surface/20',
+                  isSkipped ? 'text-on-surface/20 line-through' :
+                  isDone    ? 'text-emerald-400' :
+                  isActive  ? 'text-primary' :
+                              'text-on-surface/20',
                 ].join(' ')}>{label}</span>
               </div>
             </div>
@@ -193,7 +199,7 @@ function ReadOnlyBanner({ currentStep, onBack }) {
 }
 
 // ── Step 1: Agent Planner ─────────────────────────────────────────────────────
-function PlannerStep({ loading, subtopics, onChange, onProceed, readOnly }) {
+function PlannerStep({ loading, subtopics, onChange, onProceed, onSkipToWriter, researchRecommended, readOnly }) {
   if (loading) return <LoadingState message="Agent Planner is analyzing your query…" />
 
   function update(i, val) {
@@ -275,24 +281,120 @@ function PlannerStep({ loading, subtopics, onChange, onProceed, readOnly }) {
 
       <button
         onClick={add}
-        className="flex items-center gap-1.5 border border-dashed border-outline-variant/20 hover:border-primary/30 text-on-surface/30 hover:text-primary/70 font-mono text-[10px] uppercase tracking-wider transition-colors mb-12 px-3 py-2 w-full justify-center"
+        className="flex items-center gap-1.5 border border-dashed border-outline-variant/20 hover:border-primary/30 text-on-surface/30 hover:text-primary/70 font-mono text-[10px] uppercase tracking-wider transition-colors mb-8 px-3 py-2 w-full justify-center"
       >
         <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>
         Add subtopic
       </button>
 
-      <div className="flex justify-end">
-        <ProceedButton onClick={onProceed} disabled={subtopics.filter(Boolean).length === 0}>
+      {/* Research recommendation box */}
+      {researchRecommended ? (
+        <div className="flex items-start gap-3 mb-8 px-4 py-3 bg-emerald-400/5 border border-emerald-400/20">
+          <span
+            className="material-symbols-outlined text-emerald-400 shrink-0 mt-0.5"
+            style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}
+          >
+            check_circle
+          </span>
+          <div>
+            <p className="font-mono text-[11px] text-emerald-400 uppercase tracking-wider mb-0.5">
+              Research recommended
+            </p>
+            <p className="font-body text-xs text-on-surface/50">
+              This query appears to benefit from research. Agent Researcher will gather findings and sources for each subtopic.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-3 mb-8 px-4 py-3 bg-primary/5 border border-primary/20">
+          <span
+            className="material-symbols-outlined text-primary shrink-0 mt-0.5"
+            style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}
+          >
+            bolt
+          </span>
+          <div>
+            <p className="font-mono text-[11px] text-primary uppercase tracking-wider mb-0.5">
+              No research required
+            </p>
+            <p className="font-body text-xs text-on-surface/50">
+              This query can go straight to writing. You can skip the research step, or run it anyway if you'd like sources.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-3">
+        {/* Skip button — secondary when research is recommended, primary when not */}
+        <button
+          onClick={onSkipToWriter}
+          disabled={subtopics.filter(Boolean).length === 0}
+          className={[
+            'font-label font-bold text-[11px] px-6 py-3 uppercase tracking-widest transition-colors active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed',
+            researchRecommended
+              ? 'border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant/60'
+              : 'bg-primary hover:bg-[#ff8a52] text-on-primary',
+          ].join(' ')}
+        >
+          Skip to Agent Writer →
+        </button>
+        {/* Proceed button — primary when research is recommended, secondary when not */}
+        <button
+          onClick={onProceed}
+          disabled={subtopics.filter(Boolean).length === 0}
+          className={[
+            'font-label font-bold text-[11px] px-6 py-3 uppercase tracking-widest transition-colors active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed',
+            researchRecommended
+              ? 'bg-primary hover:bg-[#ff8a52] text-on-primary'
+              : 'border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant/60',
+          ].join(' ')}
+        >
           Proceed to Agent Researcher →
-        </ProceedButton>
+        </button>
       </div>
     </div>
   )
 }
 
 // ── Step 2: Agent Researcher ──────────────────────────────────────────────────
-function ResearcherStep({ loading, research, onChange, onProceed, readOnly }) {
+function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch, onRunResearch, researchRecommended, readOnly }) {
   const [newSourceUrls, setNewSourceUrls] = useState(() => research.map(() => ''))
+
+  // Pre-decision: show Run/Skip prompt when research hasn't been fetched yet
+  if (research.length === 0 && !loading && !readOnly) {
+    return (
+      <div className="max-w-3xl mx-auto py-16 px-6 flex flex-col items-center text-center gap-6">
+        <div className="w-12 h-12 bg-surface-container border border-outline-variant/20 flex items-center justify-center">
+          <span className="material-symbols-outlined text-primary/70" style={{ fontSize: 22 }}>search</span>
+        </div>
+        <div>
+          <h2 className="font-headline text-xl font-bold text-on-surface mb-2">Run the Research Agent?</h2>
+          <p className="font-body text-sm text-on-surface/50 max-w-md">
+            Would you like to run Agent Researcher to gather findings and sources for each subtopic, or skip straight to writing?
+          </p>
+        </div>
+        {!researchRecommended && (
+          <p className="font-mono text-[10px] text-on-surface/30 uppercase tracking-wider border border-outline-variant/15 px-3 py-2 max-w-sm">
+            The planner suggested skipping research for this query, but you can still run it if you'd like.
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onSkipResearch}
+            className="border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant/60 font-label font-bold text-[11px] px-6 py-3 uppercase tracking-widest transition-colors"
+          >
+            Skip Research →
+          </button>
+          <button
+            onClick={onRunResearch}
+            className="bg-primary hover:bg-[#ff8a52] text-on-primary font-label font-bold text-[11px] px-6 py-3 uppercase tracking-widest transition-colors active:scale-[0.98]"
+          >
+            Run Research →
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return <LoadingState message={`Agent Researcher is researching ${research.length} subtopic${research.length !== 1 ? 's' : ''}…`} />
@@ -475,7 +577,7 @@ function ResearcherStep({ loading, research, onChange, onProceed, readOnly }) {
 }
 
 // ── Step 3: Agent Writer ──────────────────────────────────────────────────────
-function WriterStep({ loading, report, onChange, onProceed, readOnly }) {
+function WriterStep({ loading, report, onChange, onProceed, readOnly, researchSkipped }) {
   if (loading) return <LoadingState message="Agent Writer is composing your report…" />
 
   function updateTitle(val) {
@@ -493,6 +595,22 @@ function WriterStep({ loading, report, onChange, onProceed, readOnly }) {
   if (readOnly) {
     return (
       <div className="max-w-4xl mx-auto py-10 px-6 pb-20">
+        {/* Context banner */}
+        {researchSkipped ? (
+          <div className="flex items-center gap-2.5 px-4 py-2.5 mb-6 bg-primary/5 border border-primary/15">
+            <span className="material-symbols-outlined text-primary/60 shrink-0" style={{ fontSize: 15 }}>edit_note</span>
+            <p className="font-mono text-[10px] text-primary/70 uppercase tracking-wider">
+              Generating without research data — based on planner subtopics only
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2.5 px-4 py-2.5 mb-6 bg-emerald-400/5 border border-emerald-400/15">
+            <span className="material-symbols-outlined text-emerald-400/70 shrink-0" style={{ fontSize: 15, fontVariationSettings: "'FILL' 1" }}>bar_chart</span>
+            <p className="font-mono text-[10px] text-emerald-400/70 uppercase tracking-wider">
+              Using research data from Agent Researcher
+            </p>
+          </div>
+        )}
         <div className="mb-8">
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-primary/60 mb-2">
             Agent Output — Agent Writer
@@ -524,6 +642,22 @@ function WriterStep({ loading, report, onChange, onProceed, readOnly }) {
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-6 pb-20">
+      {/* Context banner */}
+      {researchSkipped ? (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 mb-6 bg-primary/5 border border-primary/15">
+          <span className="material-symbols-outlined text-primary/60 shrink-0" style={{ fontSize: 15 }}>edit_note</span>
+          <p className="font-mono text-[10px] text-primary/70 uppercase tracking-wider">
+            Generating without research data — based on planner subtopics only
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2.5 px-4 py-2.5 mb-6 bg-emerald-400/5 border border-emerald-400/15">
+          <span className="material-symbols-outlined text-emerald-400/70 shrink-0" style={{ fontSize: 15, fontVariationSettings: "'FILL' 1" }}>bar_chart</span>
+          <p className="font-mono text-[10px] text-emerald-400/70 uppercase tracking-wider">
+            Using research data from Agent Researcher
+          </p>
+        </div>
+      )}
       <div className="mb-8">
         <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-primary/60 mb-2">
           Agent Output — Agent Writer
@@ -574,53 +708,47 @@ function WriterStep({ loading, report, onChange, onProceed, readOnly }) {
   )
 }
 
-// ── Step 4: Agent Evaluator ───────────────────────────────────────────────────
-function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch }) {
-  if (loading) return <LoadingState message="Agent Evaluator is assessing report quality…" />
+// ── Revised evaluation data (shown after feedback loop completes) ─────────────
+const MOCK_REVISED_EVALUATION = {
+  accuracy:     { score: 4.5, max: 5, reasoning: 'Revised report addresses source discrepancies. Findings now align more closely with cited publications.' },
+  completeness: { score: 4.7, max: 5, reasoning: 'Edge deployment section expanded with additional technical depth as recommended.' },
+  clarity:      { score: 4.8, max: 5, reasoning: 'Technical jargon further contextualised. Sentence structure improved throughout.' },
+  hallucinationRisk: 'LOW',
+  confidence: 88,
+  tokenUsage: 1587,
+  tokenMax: 4096,
+  latencyMs: 312,
+}
 
-  const { accuracy, completeness, clarity, hallucinationRisk, confidence, tokenUsage, tokenMax, latencyMs } = MOCK_EVALUATION
-
+// ── Confidence gauge SVG (reused for both eval passes) ───────────────────────
+function ConfidenceGauge({ confidence }) {
   return (
-    <div className="max-w-4xl mx-auto py-10 px-6 pb-24">
+    <svg width="110" height="110" viewBox="0 0 120 120" className="shrink-0">
+      <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,112,46,0.08)" strokeWidth="8" />
+      <circle
+        cx="60" cy="60" r="54" fill="none"
+        stroke="#FF702E" strokeWidth="8"
+        strokeLinecap="square"
+        strokeDasharray={CIRC}
+        strokeDashoffset={CIRC * (1 - confidence / 100)}
+        transform="rotate(-90 60 60)"
+        style={{ filter: 'drop-shadow(0 0 6px rgba(255,112,46,0.5))' }}
+      />
+      <text x="60" y="56" textAnchor="middle" fill="#e2e2eb" fontSize="22" fontFamily="Space Grotesk" fontWeight="700">
+        {confidence}%
+      </text>
+      <text x="60" y="72" textAnchor="middle" fill="rgba(226,226,235,0.3)" fontSize="8" fontFamily="Space Mono" letterSpacing="2">
+        CONFIDENCE
+      </text>
+    </svg>
+  )
+}
 
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-primary/60 mb-2">
-            Agent Output — Agent Evaluator
-          </div>
-          <h2 className="font-headline text-2xl font-bold text-on-surface mb-2">
-            Evaluation Results
-          </h2>
-          <p className="font-body text-on-surface/50 text-sm">
-            Quality assessment by Agent Evaluator. Read-only.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
-          <button
-            onClick={() => triggerDownload(
-              `research-report-${slugify(query)}.md`,
-              buildReportMarkdown(report, researcherOutput),
-              'text/markdown'
-            )}
-            className="flex items-center gap-1.5 border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant font-label font-bold text-[11px] px-4 py-2 uppercase tracking-widest transition-colors"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>download</span>
-            Report
-          </button>
-          <button
-            onClick={() => triggerDownload(
-              `evaluation-${slugify(query)}.json`,
-              buildEvaluationJSON(query),
-              'application/json'
-            )}
-            className="flex items-center gap-1.5 border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant font-label font-bold text-[11px] px-4 py-2 uppercase tracking-widest transition-colors"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>download</span>
-            Evaluation
-          </button>
-        </div>
-      </div>
-
+// ── Evaluation scores panel (reused for both eval passes) ────────────────────
+function EvalScores({ evalData }) {
+  const { accuracy, completeness, clarity, hallucinationRisk, confidence, tokenUsage, tokenMax, latencyMs } = evalData
+  return (
+    <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[
           { label: 'Accuracy',     ...accuracy },
@@ -651,24 +779,7 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
         <div className="bg-surface-container border border-outline-variant/10 p-6 flex items-center gap-6">
-          <svg width="110" height="110" viewBox="0 0 120 120" className="shrink-0">
-            <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,112,46,0.08)" strokeWidth="8" />
-            <circle
-              cx="60" cy="60" r="54" fill="none"
-              stroke="#FF702E" strokeWidth="8"
-              strokeLinecap="square"
-              strokeDasharray={CIRC}
-              strokeDashoffset={CIRC * (1 - confidence / 100)}
-              transform="rotate(-90 60 60)"
-              style={{ filter: 'drop-shadow(0 0 6px rgba(255,112,46,0.5))' }}
-            />
-            <text x="60" y="56" textAnchor="middle" fill="#e2e2eb" fontSize="22" fontFamily="Space Grotesk" fontWeight="700">
-              {confidence}%
-            </text>
-            <text x="60" y="72" textAnchor="middle" fill="rgba(226,226,235,0.3)" fontSize="8" fontFamily="Space Mono" letterSpacing="2">
-              CONFIDENCE
-            </text>
-          </svg>
+          <ConfidenceGauge confidence={confidence} />
           <div>
             <div className="font-mono text-[10px] uppercase tracking-widest text-on-surface/30 mb-2">
               Hallucination Risk
@@ -702,7 +813,192 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
           </div>
         </div>
       </div>
+    </>
+  )
+}
 
+// ── Step 4: Agent Evaluator ───────────────────────────────────────────────────
+// loopPhase state machine:
+//   'idle'         — initial eval shown, loop not yet triggered
+//   'warning'      — low-confidence banner visible (2s)
+//   'sending'      — "Sending feedback to Agent Writer…" (1s)
+//   'writing'      — Writer loading animation (3s)
+//   'reevaluating' — re-eval loading animation (2s)
+//   'revised'      — revised scores shown (final, loop done)
+//
+// Manual resend runs the same 'sending' → 'writing' → 'reevaluating' → 'revised' sequence.
+// revisionUsed is set to true when the loop completes (auto or manual). Total cap: 1 revision.
+
+function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch }) {
+  const initialEval = MOCK_EVALUATION
+  const needsLoop   = initialEval.confidence < 70
+
+  // loopPhase drives all revision UI
+  const [loopPhase,    setLoopPhase]    = useState('idle')
+  const [revisionUsed, setRevisionUsed] = useState(false)
+  const [activeEval,   setActiveEval]   = useState(initialEval)
+
+  // Ref to track whether we're mid-sequence (avoids double-trigger)
+  const sequenceActive = useRef(false)
+
+  // Auto-start loop on mount if confidence is low
+  useEffect(() => {
+    if (!needsLoop) return
+    setLoopPhase('warning')
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Drive the timed phase sequence whenever loopPhase changes
+  useEffect(() => {
+    if (loopPhase === 'warning') {
+      const t = setTimeout(() => setLoopPhase('sending'), 2000)
+      return () => clearTimeout(t)
+    }
+    if (loopPhase === 'sending') {
+      const t = setTimeout(() => setLoopPhase('writing'), 1000)
+      return () => clearTimeout(t)
+    }
+    if (loopPhase === 'writing') {
+      const t = setTimeout(() => setLoopPhase('reevaluating'), 3000)
+      return () => clearTimeout(t)
+    }
+    if (loopPhase === 'reevaluating') {
+      const t = setTimeout(() => {
+        setActiveEval(MOCK_REVISED_EVALUATION)
+        setRevisionUsed(true)
+        setLoopPhase('revised')
+        sequenceActive.current = false
+      }, 2000)
+      return () => clearTimeout(t)
+    }
+  }, [loopPhase])
+
+  function handleManualResend() {
+    if (revisionUsed || sequenceActive.current) return
+    sequenceActive.current = true
+    setLoopPhase('sending')
+  }
+
+  if (loading) return <LoadingState message="Agent Evaluator is assessing report quality…" />
+
+  // ── In-progress loop phases ───────────────────────────────────────────────
+  if (loopPhase === 'writing') {
+    return (
+      <div className="max-w-4xl mx-auto py-10 px-6">
+        <div className="flex items-center gap-2 mb-10 px-4 py-2.5 bg-primary/5 border border-primary/15">
+          <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
+          <span className="font-mono text-[10px] text-primary/70 uppercase tracking-wider">
+            Revising — Agent Evaluator
+          </span>
+        </div>
+        <LoadingState message="Agent Writer is updating the report based on evaluator feedback…" />
+      </div>
+    )
+  }
+
+  if (loopPhase === 'reevaluating') {
+    return (
+      <div className="max-w-4xl mx-auto py-10 px-6">
+        <div className="flex items-center gap-2 mb-10 px-4 py-2.5 bg-primary/5 border border-primary/15">
+          <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
+          <span className="font-mono text-[10px] text-primary/70 uppercase tracking-wider">
+            Revising — Agent Evaluator
+          </span>
+        </div>
+        <LoadingState message="Re-evaluating revised report…" />
+      </div>
+    )
+  }
+
+  // ── Main evaluator results view ───────────────────────────────────────────
+  const isRevised = loopPhase === 'revised'
+
+  return (
+    <div className="max-w-4xl mx-auto py-10 px-6 pb-24">
+
+      {/* ── Loop status banners ── */}
+      {loopPhase === 'warning' && (
+        <div className="flex items-center gap-3 px-4 py-3 mb-6 bg-error/5 border border-error/20">
+          <span className="material-symbols-outlined text-error shrink-0" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>warning</span>
+          <p className="font-mono text-[10px] text-error uppercase tracking-wider flex-1">
+            Report needs improvement — Confidence score below threshold
+          </p>
+          <span className="font-mono text-[8px] text-error/50 shrink-0 animate-pulse">PROCESSING…</span>
+        </div>
+      )}
+
+      {loopPhase === 'sending' && (
+        <div className="flex items-center gap-3 px-4 py-3 mb-6 bg-primary/5 border border-primary/20">
+          <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
+          <p className="font-mono text-[10px] text-primary/70 uppercase tracking-wider">
+            Sending feedback to Agent Writer for revision…
+          </p>
+        </div>
+      )}
+
+      {isRevised && (
+        <div className="flex items-center gap-3 px-4 py-3 mb-6 bg-emerald-400/5 border border-emerald-400/20">
+          <span className="material-symbols-outlined text-emerald-400 shrink-0" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          <p className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider flex-1">
+            Report improved after revision — Confidence: {MOCK_REVISED_EVALUATION.confidence}%
+          </p>
+          <span className="font-mono text-[8px] text-on-surface/25 shrink-0">Max revision limit reached (1/1)</span>
+        </div>
+      )}
+
+      {/* ── Header row ── */}
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-primary/60 mb-2">
+            Agent Output — Agent Evaluator
+            {isRevised && <span className="ml-2 text-emerald-400/70">— Revised</span>}
+          </div>
+          <h2 className="font-headline text-2xl font-bold text-on-surface mb-2">
+            Evaluation Results
+          </h2>
+          <p className="font-body text-on-surface/50 text-sm">
+            Quality assessment by Agent Evaluator. Read-only.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 pt-1 flex-wrap justify-end">
+          {/* Manual resend button */}
+          <button
+            onClick={handleManualResend}
+            disabled={revisionUsed}
+            title={revisionUsed ? 'Revision used (1/1)' : 'Resend to Agent Writer for revision'}
+            className="flex items-center gap-1.5 border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant font-label font-bold text-[11px] px-4 py-2 uppercase tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>refresh</span>
+            {revisionUsed ? 'Revision used (1/1)' : 'Resend to Writer'}
+          </button>
+          <button
+            onClick={() => triggerDownload(
+              `research-report-${slugify(query)}.md`,
+              buildReportMarkdown(report, researcherOutput),
+              'text/markdown'
+            )}
+            className="flex items-center gap-1.5 border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant font-label font-bold text-[11px] px-4 py-2 uppercase tracking-widest transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>download</span>
+            Report
+          </button>
+          <button
+            onClick={() => triggerDownload(
+              `evaluation-${slugify(query)}.json`,
+              buildEvaluationJSON(query),
+              'application/json'
+            )}
+            className="flex items-center gap-1.5 border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant font-label font-bold text-[11px] px-4 py-2 uppercase tracking-widest transition-colors"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>download</span>
+            Evaluation
+          </button>
+        </div>
+      </div>
+
+      {/* ── Scores (swaps to revised data after loop) ── */}
+      <EvalScores evalData={activeEval} />
+
+      {/* ── Final report ── */}
       <div className="mb-8">
         <h2 className="font-headline text-xl font-bold text-on-surface mb-1">Final Report</h2>
         <p className="font-body text-on-surface/40 text-sm mb-6">Your edited draft, as submitted to Agent Evaluator.</p>
@@ -751,11 +1047,16 @@ export default function WizardScreen({
   onResearcherChange,
   onWriterChange,
   onProceedFromPlanner,
+  onSkipToWriter,
+  onRunResearch,
   onProceedFromResearcher,
+  onSkipResearch,
   onProceedFromWriter,
   onNewResearch,
   displayStep,          // null → use `step`; a past step number → read-only view
   onBackToCurrentStep,  // called to dismiss the read-only view
+  researchRecommended,
+  researchSkipped,
 }) {
   const shownStep = displayStep ?? step
   // read-only when explicitly viewing a past step
@@ -777,7 +1078,7 @@ export default function WizardScreen({
           </span>
         </div>
         {/* Stepper always shows the real wizard progress, not the viewed step */}
-        <Stepper currentStep={step} />
+        <Stepper currentStep={step} researchSkipped={researchSkipped} />
       </div>
 
       {/* ── Read-only banner when viewing a past step ── */}
@@ -793,6 +1094,8 @@ export default function WizardScreen({
             subtopics={plannerOutput}
             onChange={onPlannerChange}
             onProceed={onProceedFromPlanner}
+            onSkipToWriter={onSkipToWriter}
+            researchRecommended={researchRecommended}
             readOnly={isReadOnly}
           />
         )}
@@ -802,6 +1105,9 @@ export default function WizardScreen({
             research={researcherOutput}
             onChange={onResearcherChange}
             onProceed={onProceedFromResearcher}
+            onSkipResearch={onSkipResearch}
+            onRunResearch={onRunResearch}
+            researchRecommended={researchRecommended}
             readOnly={isReadOnly}
           />
         )}
@@ -812,6 +1118,7 @@ export default function WizardScreen({
             onChange={onWriterChange}
             onProceed={onProceedFromWriter}
             readOnly={isReadOnly}
+            researchSkipped={researchSkipped}
           />
         )}
         {shownStep === 4 && (

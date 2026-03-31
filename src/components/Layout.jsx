@@ -22,9 +22,12 @@ const PIPELINE_AGENTS = [
  * Returns the pipeline display state for agent at `index`.
  * appState: 'idle' | 'processing' | 'complete' | 'error'
  * agentStep: 0–4  (number of completed agents during processing)
+ * researchSkipped: boolean — whether Agent Researcher (index 1) was skipped
  */
-function pipelineItemState(index, appState, agentStep) {
+function pipelineItemState(index, appState, agentStep, researchSkipped) {
   if (appState === 'idle' || appState === 'error') return 'idle'
+  // Researcher (index 1) was skipped
+  if (researchSkipped && index === 1) return 'skipped'
   if (appState === 'complete') return 'done'
   // processing
   if (index < agentStep) return 'done'
@@ -47,12 +50,12 @@ export default function Layout({
   children,
   activeNav      = 'Research',
   activeTopNav   = 'Workspace',
-  pipelineStatus = { appState: 'idle', agentStep: 0 },
+  pipelineStatus = { appState: 'idle', agentStep: 0, researchSkipped: false },
   onNewResearch  = () => {},
   viewingStep    = null,
   onViewStep     = () => {},
 }) {
-  const { appState, agentStep } = pipelineStatus
+  const { appState, agentStep, researchSkipped = false } = pipelineStatus
 
   return (
     <div className="min-h-screen bg-surface-dim text-on-surface font-body flex flex-col">
@@ -192,7 +195,7 @@ export default function Layout({
 
             <div className="py-1">
               {PIPELINE_AGENTS.map(({ label, icon, step }, i) => {
-                const state      = pipelineItemState(i, appState, agentStep)
+                const state      = pipelineItemState(i, appState, agentStep, researchSkipped)
                 const isClickable = state === 'done'
                 const isViewing  = viewingStep === step && state === 'done'
 
@@ -223,6 +226,14 @@ export default function Layout({
                     {state === 'active' && (
                       <span className="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
                     )}
+                    {state === 'skipped' && (
+                      <span
+                        className="material-symbols-outlined text-on-surface/25 shrink-0"
+                        style={{ fontSize: 14 }}
+                      >
+                        remove_circle
+                      </span>
+                    )}
                     {(state === 'idle' || state === 'waiting') && (
                       <span
                         className="material-symbols-outlined text-on-surface/20 shrink-0"
@@ -249,8 +260,9 @@ export default function Layout({
                     <span
                       className={[
                         'font-mono text-[10px] uppercase tracking-tight flex-1',
-                        state === 'done'   && 'text-emerald-400',
-                        state === 'active' && 'text-primary',
+                        state === 'done'    && 'text-emerald-400',
+                        state === 'active'  && 'text-primary',
+                        state === 'skipped' && 'text-on-surface/25 line-through',
                         (state === 'idle' || state === 'waiting') && 'text-on-surface/20',
                       ].filter(Boolean).join(' ')}
                     >
@@ -266,6 +278,9 @@ export default function Layout({
                     )}
                     {!isViewing && state === 'done' && (
                       <span className="font-mono text-[8px] text-emerald-400/60 shrink-0">OK</span>
+                    )}
+                    {state === 'skipped' && (
+                      <span className="font-mono text-[8px] text-on-surface/25 shrink-0">SKIP</span>
                     )}
                   </div>
                 )

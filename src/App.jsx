@@ -101,6 +101,14 @@ function buildWriterOutput(researcherOutput) {
   }
 }
 
+// ── Research recommendation logic ─────────────────────────────────────────────
+const RESEARCH_KEYWORDS = ['compare', 'impact', 'analysis', 'analyze', 'analyse', 'data', 'statistics', 'statistic', 'research', 'study', 'evidence', 'trend', 'trends', 'report', 'market']
+
+function isResearchRecommended(query) {
+  const lower = query.toLowerCase()
+  return RESEARCH_KEYWORDS.some(kw => lower.includes(kw))
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [appState,    setAppState]    = useState('idle')
@@ -113,6 +121,12 @@ export default function App() {
   const [researcherOutput, setResearcherOutput] = useState([])
   const [writerOutput,     setWriterOutput]     = useState({ title: '', sections: [] })
   const [viewingStep,      setViewingStep]      = useState(null) // null = current step; 1–3 = past step read-only
+
+  // Skip state
+  const [researchSkipped, setResearchSkipped] = useState(false)
+
+  // Derived: whether research is recommended for current query
+  const researchRecommended = isResearchRecommended(query)
 
   // ── Sidebar pipeline tracker mapping ────────────────────────────────────────
   // agentStep = number of fully-completed agents shown as green in sidebar
@@ -133,17 +147,42 @@ export default function App() {
     setPlannerOutput(buildPlannerOutput())
     setWizardStep(1)
     setStepLoading(true)
+    setResearchSkipped(false)
     setAppState('wizard')
     // Simulate Planner loading (2s)
     setTimeout(() => setStepLoading(false), 2000)
   }
 
+  // Navigate to step 2 WITHOUT starting research — show pre-decision UI
   function handleProceedFromPlanner() {
+    setResearcherOutput([])
     setWizardStep(2)
+    setStepLoading(false)
+  }
+
+  // Called when user clicks "Run Research →" on the researcher pre-decision screen
+  function handleRunResearch() {
     setStepLoading(true)
     const research = buildResearcherOutput(plannerOutput.filter(Boolean))
     setResearcherOutput(research)
     // Simulate Researcher loading (3s)
+    setTimeout(() => setStepLoading(false), 3000)
+  }
+
+  // Skip researcher — go directly to Writer with subtopics-only draft
+  function handleSkipToWriter() {
+    const draft = buildWriterOutput(
+      plannerOutput.filter(Boolean).map(heading => ({
+        heading,
+        findings: [],
+        personalNote: '',
+        sources: [],
+      }))
+    )
+    setWriterOutput(draft)
+    setResearchSkipped(true)
+    setWizardStep(3)
+    setStepLoading(true)
     setTimeout(() => setStepLoading(false), 3000)
   }
 
@@ -154,6 +193,11 @@ export default function App() {
     setStepLoading(true)
     // Simulate Writer loading (3s)
     setTimeout(() => setStepLoading(false), 3000)
+  }
+
+  // Skip research from the researcher page (pre-decision UI)
+  function handleSkipResearch() {
+    handleSkipToWriter()
   }
 
   function handleProceedFromWriter() {
@@ -168,6 +212,7 @@ export default function App() {
     setWizardStep(1)
     setStepLoading(false)
     setViewingStep(null)
+    setResearchSkipped(false)
     setPlannerOutput([])
     setResearcherOutput([])
     setWriterOutput({ title: '', sections: [] })
@@ -187,7 +232,7 @@ export default function App() {
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
-  const pipelineStatus = { appState: sidebarAppState, agentStep: sidebarAgentStep }
+  const pipelineStatus = { appState: sidebarAppState, agentStep: sidebarAgentStep, researchSkipped }
 
   return (
     <Layout
@@ -218,11 +263,16 @@ export default function App() {
             onResearcherChange={setResearcherOutput}
             onWriterChange={setWriterOutput}
             onProceedFromPlanner={handleProceedFromPlanner}
+            onSkipToWriter={handleSkipToWriter}
+            onRunResearch={handleRunResearch}
             onProceedFromResearcher={handleProceedFromResearcher}
+            onSkipResearch={handleSkipResearch}
             onProceedFromWriter={handleProceedFromWriter}
             onNewResearch={handleNewResearch}
             displayStep={viewingStep}
             onBackToCurrentStep={handleBackToCurrentStep}
+            researchRecommended={researchRecommended}
+            researchSkipped={researchSkipped}
           />
         )}
 
