@@ -439,7 +439,7 @@ backend/
 | `POST` | `/api/agent/writer/revise` | Writer revision (evaluator feedback loop) |
 | `POST` | `/api/agent/evaluator` | Evaluator agent |
 
-CORS is currently `allow_origins=["*"]` for deployment. Tighten to the exact Vercel URL once known (remove `"*"`, add `"https://your-app.vercel.app"`, and reinstate `allow_credentials=True` if needed).
+CORS is configured for `http://localhost:5173`, `http://localhost:5174`, and `https://multi-agent-research-copilot.vercel.app`. `allow_credentials=True` is set.
 Interactive API docs: `http://localhost:8000/docs` (Swagger UI).
 
 ### Pydantic Models (`models.py`)

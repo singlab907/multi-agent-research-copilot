@@ -64,10 +64,14 @@ async def log_requests(request: Request, call_next):
         raise
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-# allow_origins=["*"] during deployment setup — tighten to exact Vercel URL once known.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://multi-agent-research-copilot.vercel.app",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
