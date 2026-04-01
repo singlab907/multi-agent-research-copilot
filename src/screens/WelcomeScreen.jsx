@@ -14,7 +14,7 @@ export function WelcomeContent({ onSubmit = () => {} }) {
   const [backendDown,     setBackendDown]     = useState(false)
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/health', { signal: AbortSignal.timeout(3000) })
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/health`, { signal: AbortSignal.timeout(3000) })
       .then(r => { if (!r.ok) setBackendDown(true) })
       .catch(() => setBackendDown(true))
   }, [])

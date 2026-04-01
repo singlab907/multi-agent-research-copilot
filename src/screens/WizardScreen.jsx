@@ -834,11 +834,10 @@ function EvalScores({ evalData }) {
 //   'reevaluating' — waiting for second /api/agent/evaluator response
 //   'revised'      — final revised scores shown
 //
-// API_BASE is the backend root; passed in as a prop so EvaluatorStep doesn't import it.
 // onError(msg) routes API failures to App-level error state.
 
 function EvaluatorStep({ loading, report, researcherOutput, query, evalData, durationMs, onNewResearch, onError, onSaveResult }) {
-  const API_BASE = 'http://localhost:8000'
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
   const [loopPhase,      setLoopPhase]      = useState('idle')
   const [revisionUsed,   setRevisionUsed]   = useState(false)

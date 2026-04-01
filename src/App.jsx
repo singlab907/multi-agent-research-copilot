@@ -8,7 +8,7 @@ import WizardScreen       from './screens/WizardScreen'
 // idle → wizard (steps 1–4) → idle (New Research)
 //                          └──→ error → idle (retry)
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
