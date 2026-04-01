@@ -8,9 +8,7 @@ April 2026
 Architecture: Multi-Agent Sequential Pipeline |  LLM: Gemini 2.5 Flash  |  Stack: React + FastAPI
  
 1. Executive Summary
-Multi-Agent Research Copilot is a production-grade AI system that transforms a single research query into a structured, evaluated report through a coordinated pipeline of four specialized AI agents. Unlike conventional single-prompt AI tools that generate unverified content, this system separates generation from evaluation, introducing a built-in quality assessment layer that scores every output for accuracy, completeness, clarity, and hallucination risk.
-The system solves a fundamental trust problem in AI-generated content: users have no way to know if an AI output is reliable. By integrating an Evaluator Agent that independently scores the Writer Agent’s output—and automatically triggers a revision cycle when quality falls below threshold—the system creates a self-correcting pipeline that produces measurably better results.
-This project was conceived, designed, and shipped as an AI Product Manager, demonstrating end-to-end product thinking: from system architecture and agent orchestration to evaluation framework design, human-in-the-loop workflows, and deployment strategy.
+Multi-Agent Research Copilot is a production-grade AI system that transforms a single research query into a structured, evaluated report through a coordinated pipeline of four specialized AI agents. Unlike conventional single-prompt AI tools that generate unverified content, this system separates generation from evaluation, introducing a built-in quality assessment layer that scores every output for accuracy, completeness, clarity, and hallucination risk. The system solves a fundamental trust problem in AI-generated content: users have no way to know if an AI output is reliable. By integrating an Evaluator Agent that independently scores the Writer Agent’s output—and automatically triggers a revision cycle when quality falls below threshold—the system creates a self-correcting pipeline that produces measurably better results. This project was conceived, designed, and shipped as an AI Product Manager, demonstrating end-to-end product thinking: from system architecture and agent orchestration to evaluation framework design, human-in-the-loop workflows, and deployment strategy.
 
 2. The Problem This System Solves
 
@@ -33,8 +31,7 @@ Research from Stanford indicates that combining automated and human evaluation i
 3. System Architecture: Multi-Agent Sequential Pipeline
 
 3.1 Why Multi-Agent, Not Single-Prompt
-A single-prompt system asks one LLM to simultaneously plan research, gather information, write a report, and assess its own quality. This approach fails because self-evaluation is inherently unreliable—the same model that generated a hallucination cannot reliably detect it. Multi-agent architectures solve this by assigning distinct cognitive tasks to specialized agents, each with focused prompts and independent context.
-This system uses a sequential pipeline architecture where each agent’s output becomes the next agent’s input, creating a chain of specialized transformations:
+A single-prompt system asks one LLM to simultaneously plan research, gather information, write a report, and assess its own quality. This approach fails because self-evaluation is inherently unreliable—the same model that generated a hallucination cannot reliably detect it. Multi-agent architectures solve this by assigning distinct cognitive tasks to specialized agents, each with focused prompts and independent context. This system uses a sequential pipeline architecture where each agent’s output becomes the next agent’s input, creating a chain of specialized transformations:
 
 AGENT	ROLE	INPUT	OUTPUT
 Agent Planner	Task Decomposition	User query	Structured subtopics + research recommendation
@@ -43,16 +40,15 @@ Agent Writer	Report Composition	Research data + user notes	Structured report wit
 Agent Evaluator	Quality Assessment	Final report	Scores, reasoning, confidence, revision flag
 
 3.2 Intelligent Routing: The Planner’s Decision Layer
-The Planner Agent does more than decompose queries. It makes a routing decision: does this query require external research, or can it be addressed through the Writer Agent’s general knowledge alone? This decision is communicated to the user with a clear recommendation and reasoning. The user retains full control—they can override the recommendation in either direction.
-This routing capability prevents unnecessary computation for simple queries (opinion pieces, creative writing) while ensuring complex factual queries receive proper research treatment. It reflects a core product principle: the system should be smart enough to adapt its pipeline to the task, but never override the user’s judgment.
+The Planner Agent does more than decompose queries. It makes a routing decision: does this query require external research, or can it be addressed through the Writer Agent’s general knowledge alone? This decision is communicated to the user with a clear recommendation and reasoning. The user retains full control—they can override the recommendation in either direction. This routing capability prevents unnecessary computation for simple queries (opinion pieces, creative writing) while ensuring complex factual queries receive proper research treatment. It reflects a core product principle: the system should be smart enough to adapt its pipeline to the task, but never override the user’s judgment.
 
 3.3 The Skip-Research Path
 When the Planner determines that research is unnecessary—or when the user chooses to skip—the Writer Agent operates with subtopics only, generating a report from the LLM’s training knowledge. The UI clearly signals this with a context indicator: “Generating without research data.” This transparency prevents users from mistaking an unreferenced report for a researched one.
 
 4. Evaluation Framework: Quantifying Output Quality
+
 4.1 The Four Evaluation Dimensions
 The Evaluator Agent scores every report across four dimensions. These are not arbitrary metrics—they map directly to the failure modes that make AI-generated content unreliable in professional settings:
-
 
 METRIC	SCALE	WHAT IT MEASURES	WHY IT MATTERS
 Accuracy	1.0 – 5.0	Factual correctness of claims, data points, and cited information	Directly addresses hallucination—the highest-risk failure mode in AI content
@@ -64,8 +60,7 @@ Clarity	1.0 – 5.0	Readability, structure, logical flow, and professional prese
 Hallucination Risk	Low / Med / High	Likelihood that the report contains fabricated facts, sources, or claims	The single most critical safety metric for AI content in professional use
 
 4.2 Confidence Score: The Aggregated Trust Signal
-The four dimension scores are synthesized into a single Confidence Score (0–100%), which serves as the system’s primary trust signal. This score is the first thing users see on the evaluation screen, displayed as a circular gauge that immediately communicates whether the output is trustworthy.
-The Confidence Score is not a simple average. The Evaluator Agent weighs accuracy and hallucination risk more heavily than clarity, reflecting the reality that a well-written but factually wrong report is more dangerous than an accurate but poorly formatted one.
+The four dimension scores are synthesized into a single Confidence Score (0–100%), which serves as the system’s primary trust signal. This score is the first thing users see on the evaluation screen, displayed as a circular gauge that immediately communicates whether the output is trustworthy. The Confidence Score is not a simple average. The Evaluator Agent weighs accuracy and hallucination risk more heavily than clarity, reflecting the reality that a well-written but factually wrong report is more dangerous than an accurate but poorly formatted one.
 
 4.3 Alignment with Risk-Aware Evaluation Frameworks
 This evaluation framework draws from established approaches in AI safety and quality assurance:
@@ -76,12 +71,11 @@ This evaluation framework draws from established approaches in AI safety and qua
 
 5. The Writer–Evaluator Feedback Loop
 5.1 How Automatic Revision Works
-This is the system’s self-correction mechanism. When the Evaluator Agent determines that a report’s confidence score falls below 70%—or any individual metric scores below 3.0—it sets a needs_revision flag and generates structured feedback explaining exactly what needs improvement.
-The system then automatically:
-1.	Sends the original report and the Evaluator’s feedback back to the Writer Agent
-2.	The Writer Agent revises the report, making targeted improvements based on the specific criticisms (not a full rewrite)
-3.	The revised report is sent back to the Evaluator Agent for re-assessment
-4.	The new scores are displayed alongside a revision summary explaining what changed
+This is the system’s self-correction mechanism. When the Evaluator Agent determines that a report’s confidence score falls below 70%—or any individual metric scores below 3.0—it sets a needs_revision flag and generates structured feedback explaining exactly what needs improvement. The system then automatically:
+Sends the original report and the Evaluator’s feedback back to the Writer Agent
+The Writer Agent revises the report, making targeted improvements based on the specific criticisms (not a full rewrite)
+The revised report is sent back to the Evaluator Agent for re-assessment
+The new scores are displayed alongside a revision summary explaining what changed
 
 5.2 Why Only One Revision Cycle
 The system caps revision at one cycle. This is a deliberate product decision, not a technical limitation:
@@ -131,8 +125,7 @@ After proceeding past any step, users can click on completed agent names in the 
 Rather than a single endpoint that runs all agents sequentially, the system exposes individual endpoints for each agent. This design enables the step-by-step wizard—the frontend calls each endpoint only when the user clicks “Proceed,” sending edited data with each request. It also allows future extensibility: agents can be replaced, reordered, or parallelized without changing the API contract.
 
 8. Key Product Decisions and Trade-offs
-
-DECISION	RATIONALE	TRADE-OFF
+DECISION	RATIONALE	TRADE-OFF: 
 Sequential pipeline (not parallel)	Each agent needs the previous agent’s output. Parallel execution is architecturally impossible for this task.	Higher total latency, but each step is independently verifiable.
 Single revision cap	Diminishing returns after first revision. Prevents infinite loops and controls API costs.	Output may still be suboptimal after one revision. User retains manual control.
 70% confidence threshold	Balances sensitivity (catching bad reports) with specificity (not flagging acceptable ones). Calibrated through testing.	Binary threshold may miss nuanced quality gradients. Future: adaptive thresholds per domain.
@@ -140,7 +133,6 @@ Optional research step	Not all queries need research. Skipping saves time and AP
 Separate evaluator (not self-eval)	Self-evaluation is unreliable. A separate evaluation agent with a critical assessment prompt produces more honest scoring.	Additional API call per query. Justified by significantly higher trust in output quality.
 
 9. What This Project Demonstrates
-As an AI Product Manager
 •	System Design Thinking: Architecting a multi-agent pipeline where each component has a clear responsibility, defined inputs/outputs, and measurable contribution to the final product.
 •	Evaluation Framework Design: Defining quality dimensions that map to real user risks, not arbitrary metrics. The accuracy/completeness/clarity/hallucination framework reflects genuine professional concerns about AI content reliability.
 •	Human-in-the-Loop Product Design: Building interfaces that keep humans in control without making the AI useless. The editable step-by-step wizard balances automation with agency.
