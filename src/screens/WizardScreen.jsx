@@ -1,17 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 
-// ── Mock evaluation data (read-only, used in step 4) ──────────────────────────
-const MOCK_EVALUATION = {
-  accuracy:     { score: 4.2, max: 5, reasoning: 'Sources are credible and findings align with established research. Minor discrepancies in market projection figures noted.' },
-  completeness: { score: 4.5, max: 5, reasoning: 'All requested subtopics covered thoroughly. Edge deployment section could benefit from additional technical depth.' },
-  clarity:      { score: 4.6, max: 5, reasoning: 'Report is well-structured and accessible. Technical jargon is appropriately contextualised for enterprise audiences.' },
-  hallucinationRisk: 'LOW',
-  confidence: 55, // TODO: set back to 85 after testing the feedback loop
-  tokenUsage: 1402,
-  tokenMax: 4096,
-  latencyMs: 284,
-}
-
 const CIRC = 2 * Math.PI * 54 // ~339.3
 
 // ── Download helpers ──────────────────────────────────────────────────────────
@@ -46,20 +34,40 @@ function buildReportMarkdown(report, researcherOutput) {
   return md
 }
 
-function buildEvaluationJSON(query) {
-  const { accuracy, completeness, clarity, hallucinationRisk, confidence, tokenUsage, tokenMax, latencyMs } = MOCK_EVALUATION
+function isValidUrl(str) {
+  if (!str) return false
+  try { new URL(str); return true } catch { return false }
+}
+
+function SourceLink({ title, url }) {
+  if (isValidUrl(url)) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-body text-xs text-primary truncate hover:underline"
+      >
+        {title}
+      </a>
+    )
+  }
+  return <span className="font-body text-xs text-on-surface/50 truncate">{title}</span>
+}
+
+function buildEvaluationJSON(query, evalData) {
   return JSON.stringify({
     query,
     generatedAt: new Date().toISOString(),
     scores: {
-      accuracy:     { score: accuracy.score,     max: accuracy.max,     reasoning: accuracy.reasoning     },
-      completeness: { score: completeness.score, max: completeness.max, reasoning: completeness.reasoning },
-      clarity:      { score: clarity.score,      max: clarity.max,      reasoning: clarity.reasoning      },
+      accuracy:     { score: evalData.accuracy.score,     reasoning: evalData.accuracy.reasoning     },
+      completeness: { score: evalData.completeness.score, reasoning: evalData.completeness.reasoning },
+      clarity:      { score: evalData.clarity.score,      reasoning: evalData.clarity.reasoning      },
     },
-    hallucinationRisk,
-    confidence,
-    tokenUsage: { used: tokenUsage, max: tokenMax },
-    latencyMs,
+    hallucinationRisk: evalData.hallucination_risk,
+    confidence:        evalData.confidence_score,
+    overallFeedback:   evalData.overall_feedback,
+    durationMs:        evalData.duration_ms,
   }, null, 2)
 }
 
@@ -199,7 +207,7 @@ function ReadOnlyBanner({ currentStep, onBack }) {
 }
 
 // ── Step 1: Agent Planner ─────────────────────────────────────────────────────
-function PlannerStep({ loading, subtopics, onChange, onProceed, onSkipToWriter, researchRecommended, readOnly }) {
+function PlannerStep({ loading, subtopics, onChange, onProceed, onSkipToWriter, researchRecommended, researchRecommendedReason, durationMs, readOnly }) {
   if (loading) return <LoadingState message="Agent Planner is analyzing your query…" />
 
   function update(i, val) {
@@ -301,7 +309,7 @@ function PlannerStep({ loading, subtopics, onChange, onProceed, onSkipToWriter, 
               Research recommended
             </p>
             <p className="font-body text-xs text-on-surface/50">
-              This query appears to benefit from research. Agent Researcher will gather findings and sources for each subtopic.
+              {researchRecommendedReason || 'This query appears to benefit from research. Agent Researcher will gather findings and sources for each subtopic.'}
             </p>
           </div>
         </div>
@@ -318,10 +326,17 @@ function PlannerStep({ loading, subtopics, onChange, onProceed, onSkipToWriter, 
               No research required
             </p>
             <p className="font-body text-xs text-on-surface/50">
-              This query can go straight to writing. You can skip the research step, or run it anyway if you'd like sources.
+              {researchRecommendedReason || 'This query can go straight to writing. You can skip the research step, or run it anyway if you\'d like sources.'}
             </p>
           </div>
         </div>
+      )}
+
+      {/* Duration badge */}
+      {durationMs != null && (
+        <p className="font-mono text-[9px] text-on-surface/25 uppercase tracking-widest mb-6 -mt-4">
+          Completed in {(durationMs / 1000).toFixed(1)}s
+        </p>
       )}
 
       <div className="flex items-center justify-end gap-3">
@@ -357,7 +372,7 @@ function PlannerStep({ loading, subtopics, onChange, onProceed, onSkipToWriter, 
 }
 
 // ── Step 2: Agent Researcher ──────────────────────────────────────────────────
-function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch, onRunResearch, researchRecommended, readOnly }) {
+function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch, onRunResearch, researchRecommended, durationMs, readOnly }) {
   const [newSourceUrls, setNewSourceUrls] = useState(() => research.map(() => ''))
 
   // Pre-decision: show Run/Skip prompt when research hasn't been fetched yet
@@ -397,7 +412,7 @@ function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch
   }
 
   if (loading) {
-    return <LoadingState message={`Agent Researcher is researching ${research.length} subtopic${research.length !== 1 ? 's' : ''}…`} />
+    return <LoadingState message="Agent Researcher is gathering information…" />
   }
 
   function updateFinding(ti, fi, val) {
@@ -467,7 +482,7 @@ function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch
                 {topic.sources.map((src, si) => (
                   <div key={si} className="flex items-center gap-2">
                     <span className="text-primary font-mono text-[10px] shrink-0">[{si + 1}]</span>
-                    <span className="font-body text-xs text-on-surface/50 truncate">{src.title}</span>
+                    <SourceLink title={src.title} url={src.publication} />
                     <span className="font-mono text-[10px] text-on-surface/25 shrink-0">{src.year}</span>
                   </div>
                 ))}
@@ -491,6 +506,11 @@ function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch
         <p className="font-body text-on-surface/50 text-sm">
           Review and edit the findings for each subtopic. Add personal notes or additional sources before Agent Writer begins.
         </p>
+        {durationMs != null && (
+          <p className="font-mono text-[9px] text-on-surface/25 uppercase tracking-widest mt-2">
+            Completed in {(durationMs / 1000).toFixed(1)}s
+          </p>
+        )}
       </div>
 
       <div className="space-y-6 mb-10">
@@ -536,7 +556,7 @@ function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch
                 {topic.sources.map((src, si) => (
                   <div key={si} className="flex items-center gap-2 group">
                     <span className="text-primary font-mono text-[10px] shrink-0">[{si + 1}]</span>
-                    <span className="flex-1 font-body text-xs text-on-surface/50 truncate">{src.title}</span>
+                    <span className="flex-1 truncate"><SourceLink title={src.title} url={src.publication} /></span>
                     <span className="font-mono text-[10px] text-on-surface/25 shrink-0">{src.year}</span>
                     <button
                       onClick={() => removeSource(ti, si)}
@@ -577,7 +597,7 @@ function ResearcherStep({ loading, research, onChange, onProceed, onSkipResearch
 }
 
 // ── Step 3: Agent Writer ──────────────────────────────────────────────────────
-function WriterStep({ loading, report, onChange, onProceed, readOnly, researchSkipped }) {
+function WriterStep({ loading, report, onChange, onProceed, readOnly, researchSkipped, durationMs }) {
   if (loading) return <LoadingState message="Agent Writer is composing your report…" />
 
   function updateTitle(val) {
@@ -668,6 +688,11 @@ function WriterStep({ loading, report, onChange, onProceed, readOnly, researchSk
         <p className="font-body text-on-surface/50 text-sm">
           Review and edit Agent Writer's draft. All sections are editable before evaluation.
         </p>
+        {durationMs != null && (
+          <p className="font-mono text-[9px] text-on-surface/25 uppercase tracking-widest mt-2">
+            Completed in {(durationMs / 1000).toFixed(1)}s
+          </p>
+        )}
       </div>
 
       <div className="mb-6">
@@ -708,17 +733,6 @@ function WriterStep({ loading, report, onChange, onProceed, readOnly, researchSk
   )
 }
 
-// ── Revised evaluation data (shown after feedback loop completes) ─────────────
-const MOCK_REVISED_EVALUATION = {
-  accuracy:     { score: 4.5, max: 5, reasoning: 'Revised report addresses source discrepancies. Findings now align more closely with cited publications.' },
-  completeness: { score: 4.7, max: 5, reasoning: 'Edge deployment section expanded with additional technical depth as recommended.' },
-  clarity:      { score: 4.8, max: 5, reasoning: 'Technical jargon further contextualised. Sentence structure improved throughout.' },
-  hallucinationRisk: 'LOW',
-  confidence: 88,
-  tokenUsage: 1587,
-  tokenMax: 4096,
-  latencyMs: 312,
-}
 
 // ── Confidence gauge SVG (reused for both eval passes) ───────────────────────
 function ConfidenceGauge({ confidence }) {
@@ -745,28 +759,34 @@ function ConfidenceGauge({ confidence }) {
 }
 
 // ── Evaluation scores panel (reused for both eval passes) ────────────────────
+// evalData shape matches the API EvaluatorResponse:
+//   accuracy, completeness, clarity: { score, reasoning }
+//   hallucination_risk: string, confidence_score: int, duration_ms: int
 function EvalScores({ evalData }) {
-  const { accuracy, completeness, clarity, hallucinationRisk, confidence, tokenUsage, tokenMax, latencyMs } = evalData
+  const { accuracy, completeness, clarity } = evalData
+  const hallucinationRisk = evalData.hallucination_risk
+  const confidence        = evalData.confidence_score
+  const durationMs        = evalData.duration_ms
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Accuracy',     ...accuracy },
-          { label: 'Completeness', ...completeness },
-          { label: 'Clarity',      ...clarity },
-        ].map(({ label, score, max, reasoning }) => (
+          { label: 'Accuracy',     score: accuracy.score,     reasoning: accuracy.reasoning     },
+          { label: 'Completeness', score: completeness.score, reasoning: completeness.reasoning },
+          { label: 'Clarity',      score: clarity.score,      reasoning: clarity.reasoning      },
+        ].map(({ label, score, reasoning }) => (
           <div key={label} className="bg-surface-container border border-outline-variant/10 p-5">
             <div className="flex items-end justify-between mb-3">
               <span className="font-mono text-[10px] uppercase tracking-widest text-on-surface/40">{label}</span>
               <span className="font-headline text-2xl font-bold text-on-surface">
-                {score}<span className="text-xs font-mono text-on-surface/30">/{max}</span>
+                {score.toFixed(1)}<span className="text-xs font-mono text-on-surface/30">/5</span>
               </span>
             </div>
             <div className="h-[3px] bg-surface-container-high mb-3 overflow-hidden">
               <div
                 className="h-full bg-primary"
                 style={{
-                  width: `${(score / max) * 100}%`,
+                  width: `${(score / 5) * 100}%`,
                   boxShadow: '0 0 8px rgba(255,112,46,0.6)',
                   transition: 'width 1s ease',
                 }}
@@ -786,31 +806,20 @@ function EvalScores({ evalData }) {
             </div>
             <span className={[
               'inline-block px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider border',
-              hallucinationRisk === 'LOW'    ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30' :
-              hallucinationRisk === 'MEDIUM' ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30' :
+              hallucinationRisk === 'Low'    ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30' :
+              hallucinationRisk === 'Medium' ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30' :
                                                'bg-error/10 text-error border-error/30',
             ].join(' ')}>
-              {hallucinationRisk}_LEVEL / Verified
+              {hallucinationRisk.toUpperCase()}_LEVEL / Verified
             </span>
           </div>
         </div>
 
-        <div className="bg-surface-container border border-outline-variant/10 p-6 space-y-5">
-          <div>
-            <div className="flex justify-between font-mono text-[10px] uppercase tracking-widest text-on-surface/30 mb-1.5">
-              <span>Token Usage</span>
-              <span>{tokenUsage.toLocaleString()} / {tokenMax.toLocaleString()}</span>
-            </div>
-            <div className="h-[3px] bg-surface-container-high overflow-hidden">
-              <div className="h-full bg-primary/60" style={{ width: `${(tokenUsage / tokenMax) * 100}%` }} />
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-on-surface/30">Total Latency</span>
-            <span className="font-mono text-sm text-primary">
-              {latencyMs}<span className="text-on-surface/30 text-xs font-mono"> ms</span>
-            </span>
-          </div>
+        <div className="bg-surface-container border border-outline-variant/10 p-6 flex items-center justify-between">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-on-surface/30">Evaluation Duration</span>
+          <span className="font-mono text-sm text-primary">
+            {(durationMs / 1000).toFixed(1)}<span className="text-on-surface/30 text-xs font-mono"> s</span>
+          </span>
         </div>
       </div>
     </>
@@ -819,63 +828,109 @@ function EvalScores({ evalData }) {
 
 // ── Step 4: Agent Evaluator ───────────────────────────────────────────────────
 // loopPhase state machine:
-//   'idle'         — initial eval shown, loop not yet triggered
-//   'warning'      — low-confidence banner visible (2s)
-//   'sending'      — "Sending feedback to Agent Writer…" (1s)
-//   'writing'      — Writer loading animation (3s)
-//   'reevaluating' — re-eval loading animation (2s)
-//   'revised'      — revised scores shown (final, loop done)
+//   'idle'         — initial eval shown, no revision needed
+//   'warning'      — needs_revision=true banner shown (2s auto-delay before calling writer/revise)
+//   'writing'      — waiting for /api/agent/writer/revise response
+//   'reevaluating' — waiting for second /api/agent/evaluator response
+//   'revised'      — final revised scores shown
 //
-// Manual resend runs the same 'sending' → 'writing' → 'reevaluating' → 'revised' sequence.
-// revisionUsed is set to true when the loop completes (auto or manual). Total cap: 1 revision.
+// API_BASE is the backend root; passed in as a prop so EvaluatorStep doesn't import it.
+// onError(msg) routes API failures to App-level error state.
 
-function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch }) {
-  const initialEval = MOCK_EVALUATION
-  const needsLoop   = initialEval.confidence < 70
+function EvaluatorStep({ loading, report, researcherOutput, query, evalData, durationMs, onNewResearch, onError, onSaveResult }) {
+  const API_BASE = 'http://localhost:8000'
 
-  // loopPhase drives all revision UI
-  const [loopPhase,    setLoopPhase]    = useState('idle')
-  const [revisionUsed, setRevisionUsed] = useState(false)
-  const [activeEval,   setActiveEval]   = useState(initialEval)
+  const [loopPhase,      setLoopPhase]      = useState('idle')
+  const [revisionUsed,   setRevisionUsed]   = useState(false)
+  const [activeEval,     setActiveEval]     = useState(evalData)
+  const [activeReport,   setActiveReport]   = useState(report)
+  const [revisionNotes,  setRevisionNotes]  = useState('')
+  const [revisionDurationMs, setRevisionDurationMs] = useState(null)
+  const [reEvalDurationMs,   setReEvalDurationMs]   = useState(null)
 
-  // Ref to track whether we're mid-sequence (avoids double-trigger)
+  // Refs to prevent double-trigger / double-save
   const sequenceActive = useRef(false)
+  const savedRef       = useRef(false)
 
-  // Auto-start loop on mount if confidence is low
+  // Auto-start loop on mount if evaluator says needs_revision;
+  // otherwise save immediately (no revision needed).
   useEffect(() => {
-    if (!needsLoop) return
-    setLoopPhase('warning')
+    if (evalData?.needs_revision) {
+      setLoopPhase('warning')
+    } else if (!savedRef.current) {
+      savedRef.current = true
+      onSaveResult?.({ report: activeReport, evaluation: activeEval, revisionHappened: false })
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Drive the timed phase sequence whenever loopPhase changes
+  // 2s warning delay, then kick off revision API calls
   useEffect(() => {
-    if (loopPhase === 'warning') {
-      const t = setTimeout(() => setLoopPhase('sending'), 2000)
-      return () => clearTimeout(t)
+    if (loopPhase !== 'warning') return
+    const t = setTimeout(() => runRevisionLoop(activeReport, activeEval), 2000)
+    return () => clearTimeout(t)
+  }, [loopPhase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function runRevisionLoop(currentReport, currentEval) {
+    setLoopPhase('writing')
+    try {
+      // Step 1: call writer/revise
+      const revRes = await fetch(`${API_BASE}/api/agent/writer/revise`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          report: currentReport,
+          evaluator_feedback: {
+            accuracy:         { score: currentEval.accuracy.score,     reasoning: currentEval.accuracy.reasoning     },
+            completeness:     { score: currentEval.completeness.score, reasoning: currentEval.completeness.reasoning },
+            clarity:          { score: currentEval.clarity.score,      reasoning: currentEval.clarity.reasoning      },
+            overall_feedback: currentEval.overall_feedback,
+          },
+        }),
+      })
+      if (!revRes.ok) {
+        const err = await revRes.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${revRes.status}`)
+      }
+      const revData = await revRes.json()
+      setRevisionNotes(revData.revision_notes)
+      setRevisionDurationMs(revData.duration_ms)
+
+      // Step 2: re-evaluate revised report
+      setLoopPhase('reevaluating')
+      const evalRes = await fetch(`${API_BASE}/api/agent/evaluator`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, report: revData.report }),
+      })
+      if (!evalRes.ok) {
+        const err = await evalRes.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${evalRes.status}`)
+      }
+      const newEval = await evalRes.json()
+      setActiveReport(revData.report)
+      setActiveEval(newEval)
+      setReEvalDurationMs(newEval.duration_ms)
+      setRevisionUsed(true)
+      setLoopPhase('revised')
+      sequenceActive.current = false
+      if (!savedRef.current) {
+        savedRef.current = true
+        onSaveResult?.({ report: revData.report, evaluation: newEval, revisionHappened: true })
+      }
+    } catch (err) {
+      sequenceActive.current = false
+      const msg = err.message.includes('fetch')
+        ? 'Backend not connected. Start the server with: uvicorn main:app --port 8000'
+        : err.message
+      onError(msg)
     }
-    if (loopPhase === 'sending') {
-      const t = setTimeout(() => setLoopPhase('writing'), 1000)
-      return () => clearTimeout(t)
-    }
-    if (loopPhase === 'writing') {
-      const t = setTimeout(() => setLoopPhase('reevaluating'), 3000)
-      return () => clearTimeout(t)
-    }
-    if (loopPhase === 'reevaluating') {
-      const t = setTimeout(() => {
-        setActiveEval(MOCK_REVISED_EVALUATION)
-        setRevisionUsed(true)
-        setLoopPhase('revised')
-        sequenceActive.current = false
-      }, 2000)
-      return () => clearTimeout(t)
-    }
-  }, [loopPhase])
+  }
 
   function handleManualResend() {
     if (revisionUsed || sequenceActive.current) return
     sequenceActive.current = true
-    setLoopPhase('sending')
+    setLoopPhase('warning')
   }
 
   if (loading) return <LoadingState message="Agent Evaluator is assessing report quality…" />
@@ -887,10 +942,10 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
         <div className="flex items-center gap-2 mb-10 px-4 py-2.5 bg-primary/5 border border-primary/15">
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
           <span className="font-mono text-[10px] text-primary/70 uppercase tracking-wider">
-            Revising — Agent Evaluator
+            Revising — Agent Writer
           </span>
         </div>
-        <LoadingState message="Agent Writer is updating the report based on evaluator feedback…" />
+        <LoadingState message="Agent Writer is revising based on feedback…" />
       </div>
     )
   }
@@ -901,10 +956,10 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
         <div className="flex items-center gap-2 mb-10 px-4 py-2.5 bg-primary/5 border border-primary/15">
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
           <span className="font-mono text-[10px] text-primary/70 uppercase tracking-wider">
-            Revising — Agent Evaluator
+            Re-evaluating — Agent Evaluator
           </span>
         </div>
-        <LoadingState message="Re-evaluating revised report…" />
+        <LoadingState message="Agent Evaluator is re-evaluating…" />
       </div>
     )
   }
@@ -936,12 +991,25 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
       )}
 
       {isRevised && (
-        <div className="flex items-center gap-3 px-4 py-3 mb-6 bg-emerald-400/5 border border-emerald-400/20">
-          <span className="material-symbols-outlined text-emerald-400 shrink-0" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-          <p className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider flex-1">
-            Report improved after revision — Confidence: {MOCK_REVISED_EVALUATION.confidence}%
-          </p>
-          <span className="font-mono text-[8px] text-on-surface/25 shrink-0">Max revision limit reached (1/1)</span>
+        <div className="space-y-2 mb-6">
+          <div className="flex items-center gap-3 px-4 py-3 bg-emerald-400/5 border border-emerald-400/20">
+            <span className="material-symbols-outlined text-emerald-400 shrink-0" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            <p className="font-mono text-[10px] text-emerald-400 uppercase tracking-wider flex-1">
+              Report improved after revision — Confidence: {activeEval.confidence_score}%
+            </p>
+            <span className="font-mono text-[8px] text-on-surface/25 shrink-0">Maximum revision limit reached (1/1)</span>
+          </div>
+          {revisionNotes && (
+            <div className="px-4 py-3 bg-surface-container border border-outline-variant/10">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface/30 block mb-1">Revision Notes</span>
+              <p className="font-body text-xs text-on-surface/50 leading-relaxed">{revisionNotes}</p>
+              {revisionDurationMs != null && reEvalDurationMs != null && (
+                <p className="font-mono text-[9px] text-on-surface/20 mt-1">
+                  Writer revision: {(revisionDurationMs / 1000).toFixed(1)}s · Re-evaluation: {(reEvalDurationMs / 1000).toFixed(1)}s
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -958,6 +1026,11 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
           <p className="font-body text-on-surface/50 text-sm">
             Quality assessment by Agent Evaluator. Read-only.
           </p>
+          {durationMs != null && !isRevised && (
+            <p className="font-mono text-[9px] text-on-surface/25 uppercase tracking-widest mt-2">
+              Completed in {(durationMs / 1000).toFixed(1)}s
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-1 flex-wrap justify-end">
           {/* Manual resend button */}
@@ -973,7 +1046,7 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
           <button
             onClick={() => triggerDownload(
               `research-report-${slugify(query)}.md`,
-              buildReportMarkdown(report, researcherOutput),
+              buildReportMarkdown(activeReport, researcherOutput),
               'text/markdown'
             )}
             className="flex items-center gap-1.5 border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant font-label font-bold text-[11px] px-4 py-2 uppercase tracking-widest transition-colors"
@@ -984,7 +1057,7 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
           <button
             onClick={() => triggerDownload(
               `evaluation-${slugify(query)}.json`,
-              buildEvaluationJSON(query),
+              buildEvaluationJSON(query, activeEval),
               'application/json'
             )}
             className="flex items-center gap-1.5 border border-outline-variant/30 text-on-surface/50 hover:text-on-surface hover:border-outline-variant font-label font-bold text-[11px] px-4 py-2 uppercase tracking-widest transition-colors"
@@ -1001,16 +1074,18 @@ function EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch
       {/* ── Final report ── */}
       <div className="mb-8">
         <h2 className="font-headline text-xl font-bold text-on-surface mb-1">Final Report</h2>
-        <p className="font-body text-on-surface/40 text-sm mb-6">Your edited draft, as submitted to Agent Evaluator.</p>
+        <p className="font-body text-on-surface/40 text-sm mb-6">
+          {isRevised ? 'Revised report from Agent Writer.' : 'Your edited draft, as submitted to Agent Evaluator.'}
+        </p>
         <article className="bg-surface-container border-l-2 border-primary p-8 lg:p-12 relative">
           <div
             className="absolute inset-0 opacity-[0.025] pointer-events-none"
             style={{ backgroundImage: 'radial-gradient(#FF702E 1px, transparent 1px)', backgroundSize: '24px 24px' }}
           />
           <h1 className="text-2xl lg:text-4xl font-headline font-bold text-on-surface leading-tight mb-8 relative">
-            {report.title}
+            {activeReport.title}
           </h1>
-          {report.sections.map((section, i) => (
+          {activeReport.sections.map((section, i) => (
             <section key={i} className="mb-8 relative">
               <h2 className="font-headline text-lg font-semibold text-on-surface mb-3 border-b border-white/5 pb-2">
                 {section.heading}
@@ -1056,7 +1131,15 @@ export default function WizardScreen({
   displayStep,          // null → use `step`; a past step number → read-only view
   onBackToCurrentStep,  // called to dismiss the read-only view
   researchRecommended,
+  researchRecommendedReason,
   researchSkipped,
+  plannerDurationMs,
+  researcherDurationMs,
+  writerDurationMs,
+  evaluationData,
+  evaluatorDurationMs,
+  onError,
+  onSaveResult,
 }) {
   const shownStep = displayStep ?? step
   // read-only when explicitly viewing a past step
@@ -1096,6 +1179,8 @@ export default function WizardScreen({
             onProceed={onProceedFromPlanner}
             onSkipToWriter={onSkipToWriter}
             researchRecommended={researchRecommended}
+            researchRecommendedReason={researchRecommendedReason}
+            durationMs={plannerDurationMs}
             readOnly={isReadOnly}
           />
         )}
@@ -1108,6 +1193,7 @@ export default function WizardScreen({
             onSkipResearch={onSkipResearch}
             onRunResearch={onRunResearch}
             researchRecommended={researchRecommended}
+            durationMs={researcherDurationMs}
             readOnly={isReadOnly}
           />
         )}
@@ -1119,16 +1205,23 @@ export default function WizardScreen({
             onProceed={onProceedFromWriter}
             readOnly={isReadOnly}
             researchSkipped={researchSkipped}
+            durationMs={writerDurationMs}
           />
         )}
         {shownStep === 4 && (
-          <EvaluatorStep
-            loading={!isReadOnly && stepLoading}
-            report={writerOutput}
-            researcherOutput={researcherOutput}
-            query={query}
-            onNewResearch={onNewResearch}
-          />
+          evaluationData
+            ? <EvaluatorStep
+                loading={!isReadOnly && stepLoading}
+                report={writerOutput}
+                researcherOutput={researcherOutput}
+                query={query}
+                evalData={evaluationData}
+                durationMs={evaluatorDurationMs}
+                onNewResearch={onNewResearch}
+                onError={onError}
+                onSaveResult={onSaveResult}
+              />
+            : <LoadingState message="Agent Evaluator is scoring quality…" />
         )}
       </div>
     </div>

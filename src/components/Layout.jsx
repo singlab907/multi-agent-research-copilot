@@ -51,9 +51,12 @@ export default function Layout({
   activeNav      = 'Research',
   activeTopNav   = 'Workspace',
   pipelineStatus = { appState: 'idle', agentStep: 0, researchSkipped: false },
+  agentDurations = [],
   onNewResearch  = () => {},
   viewingStep    = null,
   onViewStep     = () => {},
+  history        = [],
+  onLoadHistory  = () => {},
 }) {
   const { appState, agentStep, researchSkipped = false } = pipelineStatus
 
@@ -257,17 +260,24 @@ export default function Layout({
                     >
                       {icon}
                     </span>
-                    <span
-                      className={[
-                        'font-mono text-[10px] uppercase tracking-tight flex-1',
-                        state === 'done'    && 'text-emerald-400',
-                        state === 'active'  && 'text-primary',
-                        state === 'skipped' && 'text-on-surface/25 line-through',
-                        (state === 'idle' || state === 'waiting') && 'text-on-surface/20',
-                      ].filter(Boolean).join(' ')}
-                    >
-                      {label}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className={[
+                          'font-mono text-[10px] uppercase tracking-tight block',
+                          state === 'done'    && 'text-emerald-400',
+                          state === 'active'  && 'text-primary',
+                          state === 'skipped' && 'text-on-surface/25 line-through',
+                          (state === 'idle' || state === 'waiting') && 'text-on-surface/20',
+                        ].filter(Boolean).join(' ')}
+                      >
+                        {label}
+                      </span>
+                      {state === 'done' && agentDurations[i] && (
+                        <span className="font-mono text-[8px] text-emerald-400/50 block">
+                          {agentDurations[i]}
+                        </span>
+                      )}
+                    </div>
 
                     {/* Inline badge */}
                     {isViewing && (
@@ -276,15 +286,47 @@ export default function Layout({
                     {!isViewing && state === 'active' && (
                       <span className="font-mono text-[8px] text-primary/60 animate-pulse shrink-0">RUN</span>
                     )}
-                    {!isViewing && state === 'done' && (
-                      <span className="font-mono text-[8px] text-emerald-400/60 shrink-0">OK</span>
-                    )}
                     {state === 'skipped' && (
                       <span className="font-mono text-[8px] text-on-surface/25 shrink-0">SKIP</span>
                     )}
                   </div>
                 )
               })}
+            </div>
+          </div>
+
+          {/* ── Recent Queries ──────────────────────────────────── */}
+          <div className="mx-4 mb-3 border border-outline-variant/15 shrink-0">
+            <div className="px-3 py-2 border-b border-outline-variant/15">
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-on-surface/30">
+                Recent Queries
+              </span>
+            </div>
+            <div className="py-1">
+              {history.length === 0 ? (
+                <p className="px-3 py-2 font-mono text-[9px] text-on-surface/20 uppercase tracking-wide">
+                  No past queries yet
+                </p>
+              ) : (
+                history.slice(0, 5).map((entry) => (
+                  <button
+                    key={entry.id}
+                    onClick={() => onLoadHistory(entry.id)}
+                    title={entry.query}
+                    className="w-full text-left flex items-start gap-2 px-3 py-1.5 hover:bg-surface-container-low transition-colors group"
+                  >
+                    <span
+                      className="material-symbols-outlined text-on-surface/20 group-hover:text-primary/50 shrink-0 mt-0.5 transition-colors"
+                      style={{ fontSize: 11 }}
+                    >
+                      history
+                    </span>
+                    <span className="font-body text-[10px] text-on-surface/40 group-hover:text-on-surface/70 leading-tight transition-colors truncate">
+                      {entry.query}
+                    </span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -317,8 +359,13 @@ export default function Layout({
         </aside>
 
         {/* ── Main content ──────────────────────────────────────── */}
-        <main className="flex-1 md:ml-[260px] overflow-y-auto bg-surface-dim min-h-[calc(100vh-56px)]">
-          {children}
+        <main className="flex-1 md:ml-[260px] overflow-y-auto bg-surface-dim min-h-[calc(100vh-56px)] flex flex-col">
+          <div className="flex-1">{children}</div>
+          <footer className="border-t border-white/5 px-6 py-3 flex items-center justify-center">
+            <span className="font-mono text-[9px] text-on-surface/20 uppercase tracking-widest">
+              Powered by Gemini 2.0 Flash&nbsp;&nbsp;|&nbsp;&nbsp;Multi-Agent Research Copilot v1.0
+            </span>
+          </footer>
         </main>
       </div>
 

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from pydantic import BaseModel
 
 
@@ -114,3 +114,43 @@ class EvaluatorResponse(BaseModel):
     needs_revision: bool
     overall_feedback: str
     duration_ms: int
+
+
+# ── History ───────────────────────────────────────────────────────────────────
+
+class HistorySummary(BaseModel):
+    id: str
+    query: str
+    report_title: str
+    confidence_score: Optional[int]
+    timestamp: str
+
+
+class HistoryScores(BaseModel):
+    accuracy: Optional[float]
+    completeness: Optional[float]
+    clarity: Optional[float]
+    hallucination_risk: Optional[str]
+    confidence_score: Optional[int]
+
+
+class HistoryEntry(BaseModel):
+    id: str
+    query: str
+    report_title: str
+    research_used: bool
+    research_skipped: bool
+    revision_happened: bool
+    scores: HistoryScores
+    full_report: Any
+    full_evaluation: Any
+    timestamp: str
+
+
+class SaveResultRequest(BaseModel):
+    query: str
+    report: Any
+    evaluation: Any
+    research_used: bool
+    research_skipped: bool
+    revision_happened: bool

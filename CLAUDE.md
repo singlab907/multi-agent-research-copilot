@@ -56,7 +56,10 @@ The top-level state machine. Owns all app state, mock data builders, and wires e
 - `plannerOutput`: `string[]` — list of subtopic strings (editable by user)
 - `researcherOutput`: `ResearchTopic[]` — per-subtopic findings, sources, personalNote (editable); empty array `[]` means research hasn't been fetched yet (shows pre-decision UI). Shape: `{ heading: string, findings: string[], personalNote: string, sources: { title: string, publication: string, year: string }[] }`
 - `writerOutput`: `{ title: string, sections: { heading: string, content: string }[] }` — draft report (editable)
+- `evaluationData`: API `EvaluatorResponse | null` — real evaluator scores from backend; null until step 4 API call completes
+- `evaluatorDurationMs`: `number | null` — duration from evaluator API response
 - `researchSkipped`: `boolean` — true when user bypassed Agent Researcher; shows SKIPPED state in sidebar and stepper
+- `history`: `HistorySummary[]` — last 10 entries fetched from `/api/history` on mount; refreshed after each save
 
 **Derived values:**
 - `researchRecommended`: `boolean` — computed from query using `isResearchRecommended(query)`. Returns true if query contains any of: `compare, impact, analysis, analyze, analyse, data, statistics, statistic, research, study, evidence, trend, trends, report, market`. This logic is a placeholder for the real planner agent classification.
@@ -83,6 +86,8 @@ The top-level state machine. Owns all app state, mock data builders, and wires e
 - `handleBackToCurrentStep()` — clears `viewingStep` to null; called by the "Back to current step" banner in WizardScreen
 - `handleNewResearch()` — resets all state to idle (including `viewingStep`, `researchSkipped`)
 - `handleRetry()` — resets appState to idle
+- `handleSaveResult({ report, evaluation, revisionHappened })` — POSTs to `/api/history`; on success re-fetches `/api/history` and updates `history` state; failures are silent (no error state change)
+- `handleLoadHistoryEntry(id)` — GETs `/api/history/{id}`; populates `query`, `writerOutput`, `evaluationData`, `researchSkipped`, sets `wizardStep=4`, `appState='wizard'` so EvaluatorStep renders the saved result read-only
 
 **Render:** `key={appState === 'wizard' ? \`wizard-${viewingStep ?? wizardStep}\` : appState}` on the wrapper div — triggers fadeSlideIn on every step transition and when switching to/from a past-step view.
 
@@ -93,10 +98,12 @@ Persistent shell that wraps every screen. Never re-mounts.
   - User/session indicator (Analyst_01 + pulse dot)
   - "Research" nav item (only active item)
   - Pipeline status tracker: reads `pipelineStatus` prop and shows STANDBY / ACTIVE / COMPLETE with per-agent indicators (spinner → check). Completed agents are clickable — clicking calls `onViewStep(step)`. The currently-viewed past step shows a "VIEW" badge instead of "OK". Non-completed steps are not clickable.
+  - **Recent Queries section**: shows last 5 entries from `history` prop. Each entry is a clickable button that calls `onLoadHistory(id)`. Shows "No past queries yet" when `history` is empty. Styled as a bordered panel matching the pipeline tracker, with `history` icon per item and truncated query text.
   - "+ New Research" orange CTA — calls `onNewResearch` prop
   - Support + Docs footer links (non-functional, decorative)
-- **Main slot**: `{children}` — scrollable content area
+- **Main slot**: flex-column wrapper — `{children}` fills available space, `<footer>` pinned at bottom with "Powered by Gemini 2.0 Flash | Multi-Agent Research Copilot v1.0" in `font-mono text-[9px] text-on-surface/20`
 - **Mobile bottom nav**: single "Research" item mirrors the sidebar
+- Pipeline tracker: completed agents now show duration below label (e.g. "1.2s") in `text-emerald-400/50`; sourced from `agentDurations` prop (index 0–3 = Planner/Researcher/Writer/Evaluator)
 
 Props:
 ```js
@@ -104,9 +111,12 @@ Props:
   activeNav:      string,           // default 'Research'
   activeTopNav:   string,           // default 'Workspace'
   pipelineStatus: { appState, agentStep, researchSkipped },
+  agentDurations: string[],         // e.g. ['1.2s', '18.4s', '12.1s', '5.3s'] — null entries hidden
   onNewResearch:  () => void,
   viewingStep:    number | null,    // which past step is being viewed (for VIEW badge)
   onViewStep:     (step: number) => void,  // called when user clicks a completed pipeline agent
+  history:        HistorySummary[],        // default []
+  onLoadHistory:  (id: string) => void,    // called when user clicks a recent query
 }
 ```
 
@@ -116,6 +126,7 @@ Props:
 - Default export `WelcomeScreen` — wraps `WelcomeContent` in its own `Layout`; used for standalone rendering only
 - Named export `WelcomeContent` — used by `App.jsx` (already inside Layout, so no double-wrap)
 - Props: `{ onSubmit: (query: string) => void }`
+- On mount, fetches `GET /api/health` with a 3-second timeout. If the request fails or returns non-ok, sets `backendDown=true` and shows a red warning banner: "Cannot connect to backend server. Please ensure the server is running on port 8000." The banner sits at the absolute top of the content area. Failure is silent beyond the banner (no error state change).
 - Has a controlled `<textarea>` + "Generate Report" button (disabled when empty)
 - Four suggestion chip buttons that auto-fill and submit the query
 - Cmd/Ctrl+Enter keyboard shortcut to submit
@@ -195,33 +206,28 @@ Props:
 
 `ConfidenceGauge({ confidence })` — extracted SVG gauge component (r=54, circumference=339.3). Used inside `EvalScores`, reused for both initial and revised evaluations via `activeEval`.
 
-`EvalScores({ evalData })` — extracted scores panel: renders the 3 metric cards (Accuracy / Completeness / Clarity each with a glowing `bg-primary` progress bar), then a 2-column row with `ConfidenceGauge` + Hallucination Risk badge (LOW=emerald, MEDIUM=yellow, else=error; badge text is `{risk}_LEVEL / Verified`) and a token usage bar + latency display. Accepts either `MOCK_EVALUATION` or `MOCK_REVISED_EVALUATION`.
+`EvalScores({ evalData })` — extracted scores panel. Uses real API field names: `accuracy/completeness/clarity: { score, reasoning }`, `hallucination_risk`, `confidence_score`, `duration_ms`. Renders the 3 metric cards (score out of 5 with glowing progress bar + reasoning), then a 2-column row with `ConfidenceGauge` + Hallucination Risk badge (Low=emerald, Medium=yellow, else=error; badge text is `{RISK}_LEVEL / Verified`) and an Evaluation Duration display. Scores shown as `{score.toFixed(1)}/5`.
 
-`EvaluatorStep({ loading, report, researcherOutput, query, onNewResearch })`:
-- Read-only evaluation results: Accuracy / Completeness / Clarity metric cards (score + glowing progress bar + reasoning text)
-- SVG confidence gauge, Hallucination Risk badge, token usage bar, latency display
-- Full final report rendered as a read-only article (user's edited draft)
-- Export buttons: "Report" (.md) and "Evaluation" (.json) — unchanged
-- "+ New Research" button — unchanged
-- **"Resend to Writer" button**: secondary outline, placed beside export buttons. Disabled (showing "Revision used (1/1)") once `revisionUsed=true`. Only 1 manual revision allowed total.
-- **Feedback loop** (internal state machine, no props changes needed):
-  - `loopPhase`: `'idle' | 'warning' | 'sending' | 'writing' | 'reevaluating' | 'revised'`
+`EvaluatorStep({ loading, report, researcherOutput, query, evalData, durationMs, onNewResearch, onError, onSaveResult })`:
+- Receives real API evaluation data via `evalData` prop (API `EvaluatorResponse` shape). `evaluationData` is `null` while loading — the `WizardScreen` renders `<LoadingState>` directly when `evaluationData` is falsy, bypassing `EvaluatorStep` entirely until data arrives.
+- Read-only evaluation results: Accuracy / Completeness / Clarity metric cards, SVG confidence gauge, Hallucination Risk badge, Evaluation Duration display
+- Full final report rendered read-only; swaps to `activeReport` (revised report) after revision loop completes
+- Export buttons use live data: "Report" downloads `buildReportMarkdown(activeReport, researcherOutput)`, "Export Evaluation" downloads `buildEvaluationJSON(query, activeEval)`
+- **Feedback loop** (real API calls, no timeouts):
+  - `loopPhase`: `'idle' | 'warning' | 'writing' | 'reevaluating' | 'revised'`
   - `revisionUsed`: `boolean` — set to true after loop completes; caps total rewrites at 1
-  - `activeEval`: `useState(initialEval)` — starts as `MOCK_EVALUATION`, swaps to `MOCK_REVISED_EVALUATION` on revision completion; passed directly to `<EvalScores evalData={activeEval} />`
+  - `activeEval`: starts as `evalData` prop, swaps to re-evaluation response after revision
+  - `activeReport`: starts as `report` prop, swaps to revised report from `writer/revise` response
+  - `revisionNotes`: string from `writer/revise` response; shown in a panel below the success banner
+  - `revisionDurationMs` / `reEvalDurationMs`: displayed in revision notes panel
   - `sequenceActive` ref: prevents double-trigger of manual resend
-  - **Auto-trigger**: on mount, if `MOCK_EVALUATION.confidence < 70`, sets `loopPhase='warning'`
-  - **Phase timings** (driven by `useEffect` on `loopPhase`):
-    - `warning` → `sending` after 2s
-    - `sending` → `writing` after 1s
-    - `writing` → `reevaluating` after 3s (shows LoadingState with Writer message)
-    - `reevaluating` → `revised` after 2s (shows LoadingState with re-eval message); swaps `activeEval` to revised data, sets `revisionUsed=true`
-  - During `writing` and `reevaluating` phases, an orange "REVISING — Agent Evaluator" pill header is shown above the loader
-  - **`loopPhase='warning'`**: red error banner "Report needs improvement — Confidence score below threshold" with PROCESSING… pulse
-  - **`loopPhase='sending'`**: orange info bar "Sending feedback to Agent Writer for revision…" with pulse dot
-  - **`loopPhase='revised'`**: green success banner "Report improved after revision — Confidence: 88%" + "Max revision limit reached (1/1)" note
-  - **Manual resend** (`handleManualResend`): starts from `'sending'` phase if `!revisionUsed && !sequenceActive.current`
-- `MOCK_REVISED_EVALUATION` constant: accuracy 4.5, completeness 4.7, clarity 4.8, confidence 88%, hallucinationRisk LOW
-- `MOCK_EVALUATION.confidence` is currently set to **55** for testing the feedback loop. **TODO: restore to 85** after testing.
+  - **Auto-trigger**: on mount, if `evalData.needs_revision === true`, sets `loopPhase='warning'`
+  - **`loopPhase='warning'`**: red error banner shown; 2s `setTimeout` then calls `runRevisionLoop()`
+  - **`runRevisionLoop(currentReport, currentEval)`**: async function — sets `loopPhase='writing'`, POSTs to `/api/agent/writer/revise` with `{query, report, evaluator_feedback: {accuracy, completeness, clarity, overall_feedback}}`; on success sets `loopPhase='reevaluating'`, POSTs to `/api/agent/evaluator` with revised report; on success sets `activeReport`, `activeEval`, `revisionUsed=true`, `loopPhase='revised'`; on any error calls `onError(msg)`
+  - During `writing` phase: orange pill "Revising — Agent Writer" + LoadingState
+  - During `reevaluating` phase: orange pill "Re-evaluating — Agent Evaluator" + LoadingState
+  - **`loopPhase='revised'`**: green success banner "Report improved after revision — Confidence: X%" + "Maximum revision limit reached (1/1)" + revision notes panel with per-step durations
+  - **Manual resend** (`handleManualResend`): sets `loopPhase='warning'` if `!revisionUsed && !sequenceActive.current`; triggers same `runRevisionLoop` via the warning `useEffect`
 
 ### `screens/ErrorScreen.jsx`
 - Named export `ErrorContent({ errorCode, subsystem, onRetry })`
@@ -356,10 +362,9 @@ The sidebar pipeline tracker reflects wizard progress:
 - [x] **Research skipped state** — `researchSkipped` boolean in App state; propagated to Layout (`pipelineStatus`) and WizardScreen (`Stepper`); sidebar shows `remove_circle` icon + strikethrough + SKIP badge; stepper shows `remove` icon + strikethrough
 - [x] **`handleRunResearch`** — separate handler for triggering research fetch from pre-decision UI; `handleProceedFromPlanner` now only navigates to step 2 without starting a fetch
 - [x] **Writer context banner** — informational bar at top of WriterStep (both editable and read-only modes); green-tinted when research was used, orange-tinted when research was skipped; no interaction, display only
-- [x] **Evaluator feedback loop** — automatic revision cycle when `confidence < 70`; 5-phase timed state machine (`warning → sending → writing → reevaluating → revised`); scores swap to `MOCK_REVISED_EVALUATION` on completion; capped at 1 revision total
+- [x] **Evaluator feedback loop** — automatic revision cycle driven by `needs_revision` from real API; 4-phase state machine (`warning → writing → reevaluating → revised`); real API calls to `/api/agent/writer/revise` then `/api/agent/evaluator`; scores, report, revision notes all swap to live data; capped at 1 revision total
 - [x] **Manual "Resend to Writer" button** — outline button beside export buttons; triggers same revision sequence; disabled with "Revision used (1/1)" once revision cap reached (auto or manual)
-- [x] **`ConfidenceGauge` + `EvalScores`** — extracted from EvaluatorStep; reused for both eval passes
-- [ ] **Restore `MOCK_EVALUATION.confidence` to 85** — currently set to 55 for feedback loop testing (same TODO exists in `backend/agents/evaluator.py`)
+- [x] **`ConfidenceGauge` + `EvalScores`** — extracted from EvaluatorStep; uses real API field names (`hallucination_risk`, `confidence_score`, `duration_ms`); reused for both eval passes
 - [x] **Backend scaffold** — FastAPI app with 6 endpoints, Pydantic models, per-agent modules, config, requirements, `.env.example`; all agents return mock data; ready for Gemini integration
 - [x] **Planner agent (live)** — real Gemini call via `google-genai`; structured JSON prompt; `_extract_json()` strips markdown fences; `HTTP 502` on failure; `async def run()`; tested with research and non-research queries
 - [x] **Researcher agent (live)** — real Gemini call; prompt includes all user-edited subtopics verbatim; returns per-subtopic `findings` (2–3 paragraphs) + `sources` (2–3 items with title + URL); `_extract_json()` fence stripping; `HTTP 502` on failure; `async def run()`; main.py route updated to `async def` + `await`; tested with healthcare query
@@ -368,18 +373,18 @@ The sidebar pipeline tracker reflects wizard progress:
 - [x] **Writer revision agent (live)** — `run_revise()` moved from evaluator.py to writer.py; `async def run_revise(request)` sends current report + structured evaluator feedback (per-metric score + reasoning + overall) to Gemini with targeted-improvement instructions; returns revised `Report` + `revision_notes`; `_extract_json()` fence stripping; `HTTP 502` on failure; main.py route updated to `async def` + `await writer.run_revise()`; tested with low-accuracy feedback — Gemini added citations and expanded missing sections
 - [x] **Request logging** — HTTP middleware in `main.py` logs every request: method, path, status code, duration in ms using Python `logging` module; format `HH:MM:SS  LEVEL  METHOD /path  status=N  duration=N ms`
 - [x] **Full pipeline integration test** — `backend/test_pipeline.py` runs both paths end-to-end against the live server: Path A (planner → researcher → writer → evaluator → conditional revision + re-evaluation); Path B (planner → skip researcher → writer → evaluator); prints structured output with scores, section counts, durations, and total pipeline time; both paths confirmed passing (Path A ~51s, Path B ~31s)
+- [x] **Frontend planner + researcher + writer connected to backend** — Planner: `handleSubmit` async → `/api/agent/planner`. Researcher: `handleRunResearch` async → `/api/agent/researcher`; shape mapped to frontend. Writer: shared `_callWriter(researchUsed, researchItems)` helper used by both `handleProceedFromResearcher` (Path A: maps frontend researcherOutput back to API `ResearchItem` shape, `research_used=true`) and `handleSkipToWriter` (Path B: `research=null`, `research_used=false`); API `report` shape matches `writerOutput` directly; `WriterStep` shows "Completed in Xs" badge. All three mocks (`buildPlannerOutput`, `buildResearcherOutput`, `buildWriterOutput`) removed.
+- [x] **Frontend evaluator connected to backend** — `handleProceedFromWriter` async → `/api/agent/evaluator`; stores `evaluationData` + `evaluatorDurationMs` in App state; passed to `WizardScreen` → `EvaluatorStep`. Revision loop calls `/api/agent/writer/revise` then `/api/agent/evaluator` with real API data. All mock evaluation constants (`MOCK_EVALUATION`, `MOCK_REVISED_EVALUATION`) removed. Errors routed via `onError` prop to App-level error state. Export buttons use live `activeEval` / `activeReport`.
+- [x] **Final polish** — Loading messages use exact agent names ("Agent Planner is analyzing your query…", "Agent Researcher is gathering information…", "Agent Writer is composing your report…", "Agent Evaluator is scoring quality…", "Agent Writer is revising based on feedback…", "Agent Evaluator is re-evaluating…"). Sidebar pipeline tracker shows per-agent duration below label for completed agents. Backend connection error banner on WelcomeScreen (health-check on mount, 3s timeout). Footer "Powered by Gemini 2.0 Flash | Multi-Agent Research Copilot v1.0" in main content area. All mock data removed.
+- [x] **History storage** — `backend/storage.py` reads/writes `backend/data/history.json` (max 50 entries, newest first). Three endpoints: `POST /api/history` (save), `GET /api/history` (last 10 summaries), `GET /api/history/{id}` (full entry). `EvaluatorStep` calls `onSaveResult` once on completion — immediately after mount if `needs_revision=false`, or after revision loop finishes; guarded by `savedRef` to prevent double-saves. App fetches history on mount and refreshes after each save. Sidebar shows last 5 queries as clickable buttons; clicking loads the saved report+evaluation into step 4 view via `handleLoadHistoryEntry`.
 
 ---
 
 ## 6. Still To Do
 
-- [ ] **Error state trigger** — The ERROR state exists and renders correctly but is never reached. Add a simulated trigger (e.g. dev toggle or random chance during loading) so it can be tested and demoed before real API is connected.
-
 - [ ] **Responsive / mobile layout** — Sidebar collapses to bottom nav on mobile, but wizard step content layouts (ResearcherStep grid, EvaluatorStep gauge row) have not been tested or adjusted for small screens.
 
-- [ ] **Backend integration** — Replace `setTimeout` simulations in `App.jsx` with real API calls to the multi-agent backend. Replace mock data builders with API responses streamed into each wizard step. State machine shape (`idle → wizard step 1–4 → idle`) is already correct; swap the handlers.
-
-- [ ] **Legacy screen cleanup** — `ProcessingScreen.jsx`, `ResultsScreen.jsx`, `ReportScreen.jsx`, `EvaluationScreen.jsx`, `SourcesTab.jsx` are no longer used by `App.jsx`. Remove them once backend integration confirms the wizard flow is the permanent UX, or repurpose their content into the wizard steps.
+- [ ] **Legacy screen cleanup** — `ProcessingScreen.jsx`, `ResultsScreen.jsx`, `ReportScreen.jsx`, `EvaluationScreen.jsx`, `SourcesTab.jsx` are no longer used by `App.jsx`. Safe to delete.
 
 ---
 

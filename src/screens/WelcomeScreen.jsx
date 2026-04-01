@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
 
 const SUGGESTIONS = [
@@ -10,7 +10,14 @@ const SUGGESTIONS = [
 
 /** Content only — no Layout wrapper. Used by App.jsx. */
 export function WelcomeContent({ onSubmit = () => {} }) {
-  const [query, setQuery] = useState('')
+  const [query,           setQuery]           = useState('')
+  const [backendDown,     setBackendDown]     = useState(false)
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/health', { signal: AbortSignal.timeout(3000) })
+      .then(r => { if (!r.ok) setBackendDown(true) })
+      .catch(() => setBackendDown(true))
+  }, [])
 
   function handleSubmit() {
     const q = query.trim()
@@ -24,6 +31,16 @@ export function WelcomeContent({ onSubmit = () => {} }) {
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-[calc(100vh-56px)] px-8 py-16">
+
+      {/* Backend connection error banner */}
+      {backendDown && (
+        <div className="absolute top-0 left-0 right-0 flex items-center gap-3 px-5 py-3 bg-error/10 border-b border-error/20">
+          <span className="material-symbols-outlined text-error shrink-0" style={{ fontSize: 16, fontVariationSettings: "'FILL' 1" }}>warning</span>
+          <p className="font-mono text-[10px] text-error uppercase tracking-wider">
+            Cannot connect to backend server. Please ensure the server is running on port 8000.
+          </p>
+        </div>
+      )}
 
       {/* Ambient glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />

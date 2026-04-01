@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Layout from './components/Layout'
 import { WelcomeContent } from './screens/WelcomeScreen'
 import { ErrorContent }   from './screens/ErrorScreen'
@@ -8,106 +8,7 @@ import WizardScreen       from './screens/WizardScreen'
 // idle → wizard (steps 1–4) → idle (New Research)
 //                          └──→ error → idle (retry)
 
-// ── Mock data generators ──────────────────────────────────────────────────────
-function buildPlannerOutput() {
-  return [
-    'Introduction & Background',
-    'Market Drivers & Adoption',
-    'Technology Landscape',
-    'Risks & Challenges',
-    'Future Outlook & Conclusion',
-  ]
-}
-
-function buildResearcherOutput(subtopics) {
-  const data = [
-    {
-      findings: [
-        'Enterprise software is shifting from deterministic rule-based systems toward generative cognitive layers capable of autonomous reasoning.',
-        'GenAI adoption in Fortune 500 companies grew 218% between 2022 and 2024, driven by LLM integration into core business operations.',
-      ],
-      sources: [
-        { title: 'Synthesis of LLM Integration in Global Financial Systems (2024)', publication: 'MIT Technology Review', year: '2024' },
-        { title: 'GenAI Enterprise Adoption Report', publication: 'Gartner', year: '2024' },
-      ],
-    },
-    {
-      findings: [
-        'Cost reduction through automation of repetitive knowledge-work tasks is the primary driver, with enterprises reporting 35–60% efficiency gains.',
-        '72% of surveyed enterprises are actively shifting from passive software to autonomous AI agents managing cross-departmental workflows.',
-      ],
-      sources: [
-        { title: 'The Economic Impact of Agentic Workflow Automation', publication: 'MIT Technology Review', year: '2024' },
-        { title: 'AI-Driven Enterprise Productivity Index', publication: 'McKinsey Global Institute', year: '2023' },
-      ],
-    },
-    {
-      findings: [
-        'Vertical AI — models fine-tuned on proprietary industry data — is outpacing general-purpose LLMs in enterprise settings for domain-specific accuracy.',
-        'Multimodal models capable of processing text, code, images, and structured data simultaneously are becoming standard enterprise infrastructure.',
-      ],
-      sources: [
-        { title: 'Vertical AI and Industry-Specific Model Performance', publication: 'Stanford AI Index', year: '2024' },
-        { title: 'Enterprise LLM Benchmark Report', publication: 'Hugging Face Research', year: '2024' },
-      ],
-    },
-    {
-      findings: [
-        'Hallucination rates in enterprise-grade models remain a critical blocker; accuracy thresholds below 99.5% are unacceptable for financial and legal applications.',
-        'Data sovereignty regulations (GDPR, AI Act) create significant legal friction for cloud-hosted model inference on sensitive data.',
-      ],
-      sources: [
-        { title: 'Data Sovereignty in the Age of Generative Intelligence — Legal Frameworks Vol. IV', publication: 'Harvard Law Review', year: '2024' },
-        { title: 'AI Hallucination Risk in Regulated Industries', publication: 'NIST', year: '2023' },
-      ],
-    },
-    {
-      findings: [
-        'GenAI-integrated enterprise software market projected to reach $450B by 2027, with ERP and CRM sectors leading adoption.',
-        'Edge deployment architectures are gaining traction to address latency, cost, and data residency concerns at scale.',
-      ],
-      sources: [
-        { title: 'Enterprise AI Market Forecast 2027', publication: 'IDC Research', year: '2024' },
-        { title: 'Edge Inference: The Next Frontier for Enterprise AI', publication: 'IEEE Spectrum', year: '2024' },
-      ],
-    },
-  ]
-
-  return subtopics.map((heading, i) => ({
-    heading,
-    findings:     (data[i] || data[0]).findings,
-    personalNote: '',
-    sources:      (data[i] || data[0]).sources,
-  }))
-}
-
-function buildWriterOutput(researcherOutput) {
-  const intro = `Generative Artificial Intelligence is no longer a peripheral experiment — it represents a foundational architectural shift in how enterprise software is conceived, built, and deployed. This report examines the multi-dimensional impact of GenAI on the enterprise software landscape, drawing on cross-industry data and agent-synthesised research to deliver actionable intelligence for technology leaders navigating this transition.`
-
-  const conclusion = `We are entering the era of cognitive enterprise software. Organisations that proactively integrate agentic AI frameworks into their core stack will define the competitive landscape of the next decade. Those that delay risk structural obsolescence in a market evolving at machine speed. The window for first-mover advantage is narrow — strategic investment in GenAI infrastructure must begin now.`
-
-  const coreSections = researcherOutput.map((topic) => ({
-    heading: topic.heading,
-    content: topic.findings.join('\n\n') + (topic.personalNote ? `\n\nAdditional Notes: ${topic.personalNote}` : ''),
-  }))
-
-  return {
-    title: `The Impact of Generative AI on Enterprise Software`,
-    sections: [
-      { heading: 'Introduction', content: intro },
-      ...coreSections,
-      { heading: 'Conclusion',   content: conclusion },
-    ],
-  }
-}
-
-// ── Research recommendation logic ─────────────────────────────────────────────
-const RESEARCH_KEYWORDS = ['compare', 'impact', 'analysis', 'analyze', 'analyse', 'data', 'statistics', 'statistic', 'research', 'study', 'evidence', 'trend', 'trends', 'report', 'market']
-
-function isResearchRecommended(query) {
-  const lower = query.toLowerCase()
-  return RESEARCH_KEYWORDS.some(kw => lower.includes(kw))
-}
+const API_BASE = 'http://localhost:8000'
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
@@ -125,8 +26,35 @@ export default function App() {
   // Skip state
   const [researchSkipped, setResearchSkipped] = useState(false)
 
-  // Derived: whether research is recommended for current query
-  const researchRecommended = isResearchRecommended(query)
+  // Planner API state — driven by real API response
+  const [plannerSubtopics,          setPlannerSubtopics]          = useState([]) // raw {id,title,description} objects
+  const [researchRecommended,       setResearchRecommended]       = useState(true)
+  const [researchRecommendedReason, setResearchRecommendedReason] = useState('')
+  const [plannerDurationMs,         setPlannerDurationMs]         = useState(null)
+
+  // Researcher API state
+  const [researcherDurationMs, setResearcherDurationMs] = useState(null)
+
+  // Writer API state
+  const [writerDurationMs, setWriterDurationMs] = useState(null)
+
+  // Evaluator API state
+  const [evaluationData,    setEvaluationData]    = useState(null)
+  const [evaluatorDurationMs, setEvaluatorDurationMs] = useState(null)
+
+  // History
+  const [history, setHistory] = useState([])
+
+  // Error details
+  const [errorMessage, setErrorMessage] = useState('')
+
+  // Fetch history on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/api/history`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setHistory(data))
+      .catch(() => {})
+  }, [])
 
   // ── Sidebar pipeline tracker mapping ────────────────────────────────────────
   // agentStep = number of fully-completed agents shown as green in sidebar
@@ -141,16 +69,48 @@ export default function App() {
     wizardStep === 4 && !stepLoading  ? 'complete' :
                                         'processing'
 
+  // Per-agent durations shown in sidebar (index 0–3 = Planner/Researcher/Writer/Evaluator)
+  const agentDurations = [
+    plannerDurationMs    != null ? (plannerDurationMs    / 1000).toFixed(1) + 's' : null,
+    researcherDurationMs != null ? (researcherDurationMs / 1000).toFixed(1) + 's' : null,
+    writerDurationMs     != null ? (writerDurationMs     / 1000).toFixed(1) + 's' : null,
+    evaluatorDurationMs  != null ? (evaluatorDurationMs  / 1000).toFixed(1) + 's' : null,
+  ]
+
   // ── Handlers ────────────────────────────────────────────────────────────────
-  function handleSubmit(q) {
+  async function handleSubmit(q) {
     setQuery(q)
-    setPlannerOutput(buildPlannerOutput())
     setWizardStep(1)
     setStepLoading(true)
     setResearchSkipped(false)
+    setPlannerDurationMs(null)
+    setResearchRecommendedReason('')
     setAppState('wizard')
-    // Simulate Planner loading (2s)
-    setTimeout(() => setStepLoading(false), 2000)
+
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/planner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      setPlannerSubtopics(data.subtopics)
+      setPlannerOutput(data.subtopics.map(s => s.title))
+      setResearchRecommended(data.research_recommended)
+      setResearchRecommendedReason(data.research_recommendation_reason)
+      setPlannerDurationMs(data.duration_ms)
+      setStepLoading(false)
+    } catch (err) {
+      const msg = err.message.includes('fetch')
+        ? 'Backend not connected. Start the server with: uvicorn main:app --port 8000'
+        : err.message
+      setErrorMessage(msg)
+      setAppState('error')
+    }
   }
 
   // Navigate to step 2 WITHOUT starting research — show pre-decision UI
@@ -161,38 +121,108 @@ export default function App() {
   }
 
   // Called when user clicks "Run Research →" on the researcher pre-decision screen
-  function handleRunResearch() {
+  async function handleRunResearch() {
     setStepLoading(true)
-    const research = buildResearcherOutput(plannerOutput.filter(Boolean))
-    setResearcherOutput(research)
-    // Simulate Researcher loading (3s)
-    setTimeout(() => setStepLoading(false), 3000)
+    setResearcherDurationMs(null)
+
+    // Merge user-edited titles back into the subtopic objects
+    const subtopics = plannerSubtopics.map((s, i) => ({
+      ...s,
+      title: plannerOutput[i] ?? s.title,
+    })).filter((_, i) => plannerOutput[i]?.trim())
+
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/researcher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, subtopics }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+
+      // Map API shape → frontend shape
+      // API: { subtopic_id, subtopic_title, findings: string, sources: [{title, url}] }
+      // Frontend: { heading, findings: string[], personalNote, sources: [{title, publication, year}] }
+      const research = data.research.map(item => ({
+        heading:      item.subtopic_title,
+        findings:     [item.findings],          // single prose block → one editable textarea
+        personalNote: '',
+        sources:      item.sources.map(s => ({
+          title:       s.title,
+          publication: s.url,                   // store URL in publication field for display
+          year:        '',
+        })),
+      }))
+
+      setResearcherOutput(research)
+      setResearcherDurationMs(data.duration_ms)
+      setStepLoading(false)
+    } catch (err) {
+      const msg = err.message.includes('fetch')
+        ? 'Backend not connected. Start the server with: uvicorn main:app --port 8000'
+        : err.message
+      setErrorMessage(msg)
+      setAppState('error')
+    }
   }
 
-  // Skip researcher — go directly to Writer with subtopics-only draft
-  function handleSkipToWriter() {
-    const draft = buildWriterOutput(
-      plannerOutput.filter(Boolean).map(heading => ({
-        heading,
-        findings: [],
-        personalNote: '',
-        sources: [],
-      }))
-    )
-    setWriterOutput(draft)
-    setResearchSkipped(true)
+  async function _callWriter(researchUsed, researchItems) {
     setWizardStep(3)
     setStepLoading(true)
-    setTimeout(() => setStepLoading(false), 3000)
+    setWriterDurationMs(null)
+
+    const subtopics = plannerSubtopics.map((s, i) => ({
+      ...s,
+      title: plannerOutput[i] ?? s.title,
+    })).filter((_, i) => plannerOutput[i]?.trim())
+
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/writer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          subtopics,
+          research: researchItems,
+          research_used: researchUsed,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      // API report shape matches frontend writerOutput shape directly
+      setWriterOutput(data.report)
+      setWriterDurationMs(data.duration_ms)
+      setStepLoading(false)
+    } catch (err) {
+      const msg = err.message.includes('fetch')
+        ? 'Backend not connected. Start the server with: uvicorn main:app --port 8000'
+        : err.message
+      setErrorMessage(msg)
+      setAppState('error')
+    }
+  }
+
+  // Skip researcher — go directly to Writer with no research data
+  function handleSkipToWriter() {
+    setResearchSkipped(true)
+    _callWriter(false, null)
   }
 
   function handleProceedFromResearcher() {
-    const draft = buildWriterOutput(researcherOutput)
-    setWriterOutput(draft)
-    setWizardStep(3)
-    setStepLoading(true)
-    // Simulate Writer loading (3s)
-    setTimeout(() => setStepLoading(false), 3000)
+    // Map frontend researcherOutput back to API ResearchItem shape
+    const researchItems = researcherOutput.map((topic, i) => ({
+      subtopic_id:    plannerSubtopics[i]?.id ?? String(i + 1),
+      subtopic_title: topic.heading,
+      findings:       topic.findings.join('\n\n') + (topic.personalNote ? `\n\nPersonal note: ${topic.personalNote}` : ''),
+      sources:        topic.sources.map(s => ({ title: s.title, url: s.publication || '' })),
+    }))
+    _callWriter(true, researchItems)
   }
 
   // Skip research from the researcher page (pre-decision UI)
@@ -200,11 +230,33 @@ export default function App() {
     handleSkipToWriter()
   }
 
-  function handleProceedFromWriter() {
+  async function handleProceedFromWriter() {
     setWizardStep(4)
     setStepLoading(true)
-    // Simulate Evaluator loading (2s)
-    setTimeout(() => setStepLoading(false), 2000)
+    setEvaluationData(null)
+    setEvaluatorDurationMs(null)
+
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/evaluator`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, report: writerOutput }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      setEvaluationData(data)
+      setEvaluatorDurationMs(data.duration_ms)
+      setStepLoading(false)
+    } catch (err) {
+      const msg = err.message.includes('fetch')
+        ? 'Backend not connected. Start the server with: uvicorn main:app --port 8000'
+        : err.message
+      setErrorMessage(msg)
+      setAppState('error')
+    }
   }
 
   function handleNewResearch() {
@@ -216,10 +268,58 @@ export default function App() {
     setPlannerOutput([])
     setResearcherOutput([])
     setWriterOutput({ title: '', sections: [] })
+    setResearchRecommended(true)
+    setResearchRecommendedReason('')
+    setPlannerDurationMs(null)
+    setPlannerSubtopics([])
+    setResearcherDurationMs(null)
+    setWriterDurationMs(null)
+    setEvaluationData(null)
+    setEvaluatorDurationMs(null)
+    setErrorMessage('')
     setAppState('idle')
   }
 
+  async function handleSaveResult({ report, evaluation, revisionHappened }) {
+    try {
+      await fetch(`${API_BASE}/api/history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          report,
+          evaluation,
+          research_used: !researchSkipped,
+          research_skipped: researchSkipped,
+          revision_happened: revisionHappened,
+        }),
+      })
+      // Refresh history list
+      const updated = await fetch(`${API_BASE}/api/history`).then(r => r.json()).catch(() => [])
+      setHistory(updated)
+    } catch (_) {
+      // Save failures are silent — don't interrupt the user
+    }
+  }
+
+  async function handleLoadHistoryEntry(id) {
+    try {
+      const entry = await fetch(`${API_BASE}/api/history/${id}`).then(r => r.json())
+      setQuery(entry.query)
+      setWriterOutput(entry.full_report)
+      setEvaluationData(entry.full_evaluation)
+      setEvaluatorDurationMs(entry.full_evaluation.duration_ms ?? null)
+      setResearchSkipped(entry.research_skipped)
+      setResearcherOutput([])
+      setViewingStep(null)
+      setWizardStep(4)
+      setStepLoading(false)
+      setAppState('wizard')
+    } catch (_) {}
+  }
+
   function handleRetry() {
+    setErrorMessage('')
     setAppState('idle')
   }
 
@@ -239,9 +339,12 @@ export default function App() {
       activeNav="Research"
       activeTopNav="Workspace"
       pipelineStatus={pipelineStatus}
+      agentDurations={agentDurations}
       onNewResearch={handleNewResearch}
       viewingStep={viewingStep}
       onViewStep={handleViewStep}
+      history={history}
+      onLoadHistory={handleLoadHistoryEntry}
     >
       <div
         key={appState === 'wizard' ? `wizard-${viewingStep ?? wizardStep}` : appState}
@@ -272,14 +375,22 @@ export default function App() {
             displayStep={viewingStep}
             onBackToCurrentStep={handleBackToCurrentStep}
             researchRecommended={researchRecommended}
+            researchRecommendedReason={researchRecommendedReason}
+            plannerDurationMs={plannerDurationMs}
+            researcherDurationMs={researcherDurationMs}
+            writerDurationMs={writerDurationMs}
+            evaluationData={evaluationData}
+            evaluatorDurationMs={evaluatorDurationMs}
             researchSkipped={researchSkipped}
+            onError={(msg) => { setErrorMessage(msg); setAppState('error') }}
+            onSaveResult={handleSaveResult}
           />
         )}
 
         {appState === 'error' && (
           <ErrorContent
-            errorCode="ERR_CORE_TIMEOUT_042"
-            subsystem="WRITER_AGENT_V1"
+            errorCode={errorMessage || 'ERR_AGENT_PLANNER'}
+            subsystem="PLANNER_AGENT_V1"
             onRetry={handleRetry}
           />
         )}

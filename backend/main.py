@@ -19,7 +19,7 @@ Agent status:
 import logging
 import time
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import (
@@ -28,8 +28,10 @@ from models import (
     WriterRequest, WriterResponse,
     WriterReviseRequest, WriterReviseResponse,
     EvaluatorRequest, EvaluatorResponse,
+    SaveResultRequest, HistorySummary, HistoryEntry,
 )
 from agents import planner, researcher, writer, evaluator
+import storage
 
 logging.basicConfig(
     level=logging.INFO,
@@ -111,3 +113,31 @@ async def run_writer_revise(request: WriterReviseRequest) -> WriterReviseRespons
 @app.post("/api/agent/evaluator", response_model=EvaluatorResponse)
 async def run_evaluator(request: EvaluatorRequest) -> EvaluatorResponse:
     return await evaluator.run(request)
+
+
+# ── History ────────────────────────────────────────────────────────────────────
+
+@app.post("/api/history", response_model=dict)
+def save_history(request: SaveResultRequest):
+    entry_id = storage.save_result(
+        query=request.query,
+        report=request.report,
+        evaluation=request.evaluation,
+        research_used=request.research_used,
+        research_skipped=request.research_skipped,
+        revision_happened=request.revision_happened,
+    )
+    return {"id": entry_id}
+
+
+@app.get("/api/history", response_model=list[HistorySummary])
+def list_history():
+    return storage.get_history()
+
+
+@app.get("/api/history/{entry_id}", response_model=HistoryEntry)
+def get_history_entry(entry_id: str):
+    entry = storage.get_result(entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="History entry not found")
+    return entry
