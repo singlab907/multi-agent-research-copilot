@@ -70,6 +70,7 @@ This evaluation framework draws from established approaches in AI safety and qua
 •	Hallucination-Specific Detection: The dedicated Hallucination Risk dimension aligns with emerging frameworks like HalluLens and HHEM that treat hallucination as a distinct failure mode requiring its own evaluation pathway, separate from general accuracy.
 
 5. The Writer–Evaluator Feedback Loop
+   
 5.1 How Automatic Revision Works
 This is the system’s self-correction mechanism. When the Evaluator Agent determines that a report’s confidence score falls below 70%—or any individual metric scores below 3.0—it sets a needs_revision flag and generates structured feedback explaining exactly what needs improvement. The system then automatically:
 Sends the original report and the Evaluator’s feedback back to the Writer Agent
@@ -87,6 +88,7 @@ The system caps revision at one cycle. This is a deliberate product decision, no
 Even when the automatic loop does not trigger (confidence >= 70%), users can manually click “Resend to Agent Writer” to request one revision. This button uses the Evaluator’s reasoning as input, ensuring the Writer has specific, actionable feedback. After one use (automatic or manual), the button disables to enforce the single-revision cap.
 
 6. Human-in-the-Loop: User Control at Every Stage
+   
 6.1 The Step-by-Step Wizard
 Rather than a “fire-and-forget” interface where the user submits a query and waits for a final result, the system implements a guided wizard where each agent’s output is presented to the user for review and optional editing before proceeding.
 This design pattern serves three purposes:
@@ -104,6 +106,7 @@ This design pattern serves three purposes:
 After proceeding past any step, users can click on completed agent names in the sidebar to review what that agent produced—without losing progress or re-running any agents. This allows backward review (checking what the Planner suggested while viewing Writer output) without disrupting the forward pipeline.
 
 7. Technical Architecture
+   
 7.1 Frontend
 •	React + Vite + Tailwind CSS
 •	Single-page application with state-driven view switching (IDLE, PLANNING, RESEARCHING, WRITING, EVALUATING, COMPLETE, ERROR)
@@ -125,6 +128,7 @@ After proceeding past any step, users can click on completed agent names in the 
 Rather than a single endpoint that runs all agents sequentially, the system exposes individual endpoints for each agent. This design enables the step-by-step wizard—the frontend calls each endpoint only when the user clicks “Proceed,” sending edited data with each request. It also allows future extensibility: agents can be replaced, reordered, or parallelized without changing the API contract.
 
 8. Key Product Decisions and Trade-offs
+   
 DECISION	RATIONALE	TRADE-OFF: 
 Sequential pipeline (not parallel)	Each agent needs the previous agent’s output. Parallel execution is architecturally impossible for this task.	Higher total latency, but each step is independently verifiable.
 Single revision cap	Diminishing returns after first revision. Prevents infinite loops and controls API costs.	Output may still be suboptimal after one revision. User retains manual control.
@@ -132,7 +136,7 @@ Single revision cap	Diminishing returns after first revision. Prevents infinite 
 Optional research step	Not all queries need research. Skipping saves time and API costs for simple queries.	Reports without research have no source citations. Context indicator mitigates confusion.
 Separate evaluator (not self-eval)	Self-evaluation is unreliable. A separate evaluation agent with a critical assessment prompt produces more honest scoring.	Additional API call per query. Justified by significantly higher trust in output quality.
 
-9. What This Project Demonstrates
+10. What This Project Demonstrates
 •	System Design Thinking: Architecting a multi-agent pipeline where each component has a clear responsibility, defined inputs/outputs, and measurable contribution to the final product.
 •	Evaluation Framework Design: Defining quality dimensions that map to real user risks, not arbitrary metrics. The accuracy/completeness/clarity/hallucination framework reflects genuine professional concerns about AI content reliability.
 •	Human-in-the-Loop Product Design: Building interfaces that keep humans in control without making the AI useless. The editable step-by-step wizard balances automation with agency.
@@ -140,7 +144,7 @@ Separate evaluator (not self-eval)	Self-evaluation is unreliable. A separate eva
 •	Technical Product Delivery: End-to-end execution from design (Stitch prototyping) through frontend development, backend API design, LLM prompt engineering, and deployment to production infrastructure.
 •	Risk-Aware AI Product Thinking: Building in hallucination detection, revision mechanisms, and transparent quality signals—the kinds of safety features that differentiate production AI from demos.
 
-10. Future Enhancements
+11. Future Enhancements
 •	Web Search Integration: Connect the Researcher Agent to real-time web search APIs for live source retrieval instead of LLM-generated references.
 •	Multi-Model Evaluation: Run the Evaluator Agent across multiple LLMs and aggregate scores for more robust quality assessment.
 •	Domain-Specific Templates: Pre-configured pipeline settings for specific use cases (market research, technical analysis, policy briefing) with tuned evaluation thresholds.
@@ -148,7 +152,7 @@ Separate evaluator (not self-eval)	Self-evaluation is unreliable. A separate eva
 •	Evaluation History Analytics: Dashboard showing evaluation score trends over time, identifying systematic weaknesses in the pipeline for prompt improvement.
 •	RAG Integration: Connect agents to enterprise knowledge bases for grounded, organization-specific research output.
 
-11. Conclusion
+12. Conclusion
 Multi-Agent Research Copilot demonstrates that the future of AI-assisted work is not about replacing human judgment with AI generation, but about building systems where AI agents collaborate with each other and with humans to produce outputs that are not just generated, but evaluated, scored, and improved.
 The separation of generation from evaluation—and the automatic feedback loop between Writer and Evaluator—represents a design pattern that extends far beyond research reports. Any domain where AI generates content that carries professional, financial, or safety risk benefits from this architecture: separate the generator from the judge, give the judge quantified metrics, and close the loop with automatic remediation.
 This is what production-grade AI product management looks like: not just making AI work, but making AI work reliably, transparently, and under human control.
