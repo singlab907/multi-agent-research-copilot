@@ -359,7 +359,15 @@ The sidebar pipeline tracker reflects wizard progress:
 - [x] **Evaluator feedback loop** — automatic revision cycle when `confidence < 70`; 5-phase timed state machine (`warning → sending → writing → reevaluating → revised`); scores swap to `MOCK_REVISED_EVALUATION` on completion; capped at 1 revision total
 - [x] **Manual "Resend to Writer" button** — outline button beside export buttons; triggers same revision sequence; disabled with "Revision used (1/1)" once revision cap reached (auto or manual)
 - [x] **`ConfidenceGauge` + `EvalScores`** — extracted from EvaluatorStep; reused for both eval passes
-- [ ] **Restore `MOCK_EVALUATION.confidence` to 85** — currently set to 55 for feedback loop testing
+- [ ] **Restore `MOCK_EVALUATION.confidence` to 85** — currently set to 55 for feedback loop testing (same TODO exists in `backend/agents/evaluator.py`)
+- [x] **Backend scaffold** — FastAPI app with 6 endpoints, Pydantic models, per-agent modules, config, requirements, `.env.example`; all agents return mock data; ready for Gemini integration
+- [x] **Planner agent (live)** — real Gemini call via `google-genai`; structured JSON prompt; `_extract_json()` strips markdown fences; `HTTP 502` on failure; `async def run()`; tested with research and non-research queries
+- [x] **Researcher agent (live)** — real Gemini call; prompt includes all user-edited subtopics verbatim; returns per-subtopic `findings` (2–3 paragraphs) + `sources` (2–3 items with title + URL); `_extract_json()` fence stripping; `HTTP 502` on failure; `async def run()`; main.py route updated to `async def` + `await`; tested with healthcare query
+- [x] **Writer agent (live)** — real Gemini call; two system prompts (with-research vs no-research); research serialised into prompt with findings + sources; returns full `Report` with title + Introduction + per-subtopic sections + Risks and Challenges + Conclusion; `_extract_json()` fence stripping; `HTTP 502` on failure; `async def run()`; main.py route updated; tested both scenarios
+- [x] **Evaluator agent (live)** — real Gemini call; full report text + query sent to Gemini; returns accuracy/completeness/clarity scores with reasoning, hallucination_risk, confidence_score, needs_revision, overall_feedback; `needs_revision` computed in Python (`confidence < 70` OR any score `< 3.0`); `_extract_json()` fence stripping; `HTTP 502` on failure; `async def run()`; main.py route updated; tested with healthcare report
+- [x] **Writer revision agent (live)** — `run_revise()` moved from evaluator.py to writer.py; `async def run_revise(request)` sends current report + structured evaluator feedback (per-metric score + reasoning + overall) to Gemini with targeted-improvement instructions; returns revised `Report` + `revision_notes`; `_extract_json()` fence stripping; `HTTP 502` on failure; main.py route updated to `async def` + `await writer.run_revise()`; tested with low-accuracy feedback — Gemini added citations and expanded missing sections
+- [x] **Request logging** — HTTP middleware in `main.py` logs every request: method, path, status code, duration in ms using Python `logging` module; format `HH:MM:SS  LEVEL  METHOD /path  status=N  duration=N ms`
+- [x] **Full pipeline integration test** — `backend/test_pipeline.py` runs both paths end-to-end against the live server: Path A (planner → researcher → writer → evaluator → conditional revision + re-evaluation); Path B (planner → skip researcher → writer → evaluator); prints structured output with scores, section counts, durations, and total pipeline time; both paths confirmed passing (Path A ~51s, Path B ~31s)
 
 ---
 
@@ -378,7 +386,105 @@ The sidebar pipeline tracker reflects wizard progress:
 ## Dev Commands
 
 ```bash
+# Frontend
 npm run dev      # Start dev server (usually http://localhost:5173 or 5174 if port in use)
 npm run build    # Production build into dist/
 npm run preview  # Preview the production build locally
+
+# Backend
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+# API docs available at http://localhost:8000/docs
 ```
+
+---
+
+## 7. Backend
+
+### Structure
+
+```
+backend/
+├── main.py              # FastAPI app, CORS, all route definitions
+├── agents/
+│   ├── __init__.py
+│   ├── planner.py       # Agent Planner — run(PlannerRequest) → PlannerResponse
+│   ├── researcher.py    # Agent Researcher — run(ResearcherRequest) → ResearcherResponse
+│   ├── writer.py        # Agent Writer — run(WriterRequest) → WriterResponse
+│   │                   #               run_revise(WriterReviseRequest) → WriterReviseResponse
+│   └── evaluator.py     # Agent Evaluator — run(EvaluatorRequest) → EvaluatorResponse
+├── models.py            # All Pydantic request/response models
+├── config.py            # Loads GEMINI_API_KEY from .env via python-dotenv
+├── requirements.txt     # fastapi, uvicorn[standard], google-genai, python-dotenv, pydantic
+└── .env.example         # GEMINI_API_KEY=your-key-here
+```
+
+`backend/.env` is in `.gitignore` and must be created manually from `.env.example`.
+
+### API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/health` | Returns `{"status": "ok"}` |
+| `POST` | `/api/agent/planner` | Planner agent |
+| `POST` | `/api/agent/researcher` | Researcher agent |
+| `POST` | `/api/agent/writer` | Writer agent |
+| `POST` | `/api/agent/writer/revise` | Writer revision (evaluator feedback loop) |
+| `POST` | `/api/agent/evaluator` | Evaluator agent |
+
+CORS is configured to allow `http://localhost:5173` and `http://localhost:5174`.
+Interactive API docs: `http://localhost:8000/docs` (Swagger UI).
+
+### Pydantic Models (`models.py`)
+
+**Shared sub-models:**
+- `Subtopic` — `{ id: str, title: str, description: str }`
+- `ReportSection` — `{ heading: str, content: str }`
+- `Report` — `{ title: str, sections: list[ReportSection] }`
+- `Source` — `{ title: str, url: str }`
+- `ResearchItem` — `{ subtopic_id, subtopic_title, findings: str, sources: list[Source] }`
+- `ScoreWithReasoning` — `{ score: float, reasoning: str }`
+- `EvaluatorFeedback` — `{ accuracy, completeness, clarity: ScoreWithReasoning, overall_feedback: str }`
+
+**Request/Response pairs:**
+
+| Agent | Request | Response |
+|---|---|---|
+| Planner | `query: str` | `subtopics`, `research_recommended: bool`, `research_recommendation_reason: str`, `duration_ms: int` |
+| Researcher | `query`, `subtopics: list[Subtopic]` | `research: list[ResearchItem]`, `duration_ms` |
+| Writer | `query`, `subtopics`, `research: Optional[list[ResearchItem]]`, `research_used: bool` | `report: Report`, `research_used`, `duration_ms` |
+| Writer Revise | `query`, `report: Report`, `evaluator_feedback: EvaluatorFeedback` | `report: Report`, `revision_notes: str`, `duration_ms` |
+| Evaluator | `query`, `report: Report` | `accuracy`, `completeness`, `clarity: ScoreWithReasoning`, `hallucination_risk: str`, `confidence_score: int`, `needs_revision: bool`, `overall_feedback: str`, `duration_ms` |
+
+### Agent Implementation Notes
+
+**Agent live status:**
+- `planner` — LIVE (Gemini)
+- `researcher` — LIVE (Gemini)
+- `writer` — LIVE (Gemini)
+- `evaluator` — LIVE (Gemini)
+- `writer/revise` — LIVE (Gemini)
+
+To connect remaining agents with real Gemini calls:
+1. Import `google.genai` and use `config.GEMINI_API_KEY`
+2. Replace the body of each agent's `run()` / `run_revise()` function
+3. The function signatures and return types stay the same — no changes to `main.py` or `models.py` needed
+
+**Planner** (`agents/planner.py`): **LIVE — calls Gemini.** `async def run(request)` sends a structured prompt to Gemini instructing it to return JSON with `subtopics` (4–6 items) + `research_recommended` bool + `research_recommendation_reason`. `_extract_json()` strips markdown fences before parsing. Raises `HTTP 502` on Gemini API error or invalid JSON. The old keyword-based `_research_recommended()` helper has been removed.
+
+**Researcher** (`agents/researcher.py`): **LIVE — calls Gemini.** `async def run(request)` sends subtopics + query to Gemini, instructing it to return JSON with a `research` array (one item per subtopic: `subtopic_id`, `subtopic_title`, `findings` 2–3 paragraphs, `sources` 2–3 items). Subtopics are included in the prompt verbatim so user edits are respected. `_extract_json()` strips markdown fences before parsing. Raises `HTTP 502` on Gemini API error or invalid JSON. The old mock `_MOCK_FINDINGS` bank has been removed.
+
+**Writer** (`agents/writer.py`): **LIVE — calls Gemini.** `async def run(request)` handles two scenarios: Scenario A (`research_used=True`) sends a system prompt instructing evidence-based writing with citations; Scenario B (`research_used=False`) sends a prompt instructing the model to write from general knowledge and note the absence of external research. Research items are serialised into the prompt with findings + sources. `_extract_json()` strips fences. Raises `HTTP 502` on error. Also contains `async def run_revise(request)` — sends the current report + structured evaluator feedback (per-metric score + reasoning + overall) to Gemini with targeted-improvement instructions; returns revised `Report` + `revision_notes`. main.py `/api/agent/writer/revise` route updated to `async def` + `await writer.run_revise()`.
+
+**Evaluator** (`agents/evaluator.py`): **LIVE — calls Gemini.** `async def run(request)` sends the full report text + original query to Gemini and receives JSON with accuracy/completeness/clarity scores (1–5 with reasoning), hallucination_risk (Low/Medium/High), confidence_score (0–100), and overall_feedback. `needs_revision` is computed in Python: `true` if `confidence_score < 70` OR any score `< 3.0`. `_extract_json()` strips fences. Raises `HTTP 502` on error. `run_revise()` has been removed — revision is handled by `writer.run_revise()`.
+
+### Gemini Integration (future)
+
+Package: `google-genai` (`pip install google-genai`)
+Config variables (loaded by `config.py` via `python-dotenv` from `backend/.env`):
+- `GEMINI_API_KEY` — required; warns on startup if missing
+- `GEMINI_MODEL` — model name; defaults to `gemini-2.0-flash` if not set in `.env`
+
+Access in agents: `from config import GEMINI_API_KEY, GEMINI_MODEL`
+All LLM calls must use `GEMINI_MODEL` rather than hardcoding the model name.
