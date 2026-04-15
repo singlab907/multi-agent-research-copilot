@@ -439,7 +439,7 @@ backend/
 | `POST` | `/api/agent/writer/revise` | Writer revision (evaluator feedback loop) |
 | `POST` | `/api/agent/evaluator` | Evaluator agent |
 
-CORS is configured for `http://localhost:5173`, `http://localhost:5174`, and `https://multi-agent-research-copilot.vercel.app`. `allow_credentials=True` is set.
+CORS is configured with `allow_origins=["*"]`, `allow_credentials=False`. Compatible with wildcard origin (credentials cannot be sent with `*`).
 Interactive API docs: `http://localhost:8000/docs` (Swagger UI).
 
 ### Pydantic Models (`models.py`)
